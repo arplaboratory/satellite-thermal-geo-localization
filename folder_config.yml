@@ -1,0 +1,30 @@
+satellite:
+  name: 20201117_west_of_rimah
+  maps:
+    - 20201117_west_of_rimah_BingSatellite.tif
+    - 20201117_west_of_rimah_ESRI Satellite.tif
+    - 20201117_west_of_rimah_ESRI_Satellite.tif
+    - 20201117_west_of_rimah_GoogleSatellite.tif
+    - 20201117_west_of_rimah_Yandex Satellite.tif
+    - 20210609_west_of_rimah_first_night_mapping_flight.tif
+sirmionemapping:
+  name: 20210519_west_of_rimah_SirmioneMapping_CROP
+  maps:
+    - 20210519_12-35-36_west_of_rimah_SirmioneMapping_CROP.tif
+    - 20210519_14-28-31_west_of_rimah_SirmioneMapping_CROP.tif
+thermalmapping:
+  name: 20210620_west_of_rimah_thermal_mapping
+  maps:
+    - 20210609_west_of_rimah_first_night_mapping_flight.tif
+    - 20210620_west_of_rimah_thermal_mapping_flight1_21h22m.tif
+    - 20210620_west_of_rimah_thermal_mapping_flight2_22h50m.tif
+    - 20210620_west_of_rimah_thermal_mapping_flight3_00h29m.tif
+    - 20210620_west_of_rimah_thermal_mapping_flight4_01h43m.tif
+    - 20210620_west_of_rimah_thermal_mapping_flight5_02h45m.tif
+    - 20210620_west_of_rimah_thermal_mapping_flight6_03h42m.tif
+foxtechmapping:
+  name: 20220603_west_of_rimah_foxtech_mapping
+  maps:
+    - 20220603_west_of_rimah_foxtech_mapping_2h30pm.tif
+    - 20220603_west_of_rimah_foxtech_mapping_9h00am.tif
+    - 20220603_west_of_rimah_foxtech_mapping_11h30am.tif
