@@ -10,8 +10,8 @@ folder_config_path = './folder_config.yml'
 datasets_folder = './datasets/'
 Image.MAX_IMAGE_PIXELS = None
 valid_region_uav = [750, 550, 4600, 6600] # top left bottom right foxtech
+valid_region_satellite = [0, 0, 9088, 23744]  # top left bottom right satellite
 queries_database_sampling = 'random'
-sample_num = 5000
 
 def create_h5_file(args, name=None, split=None):
     # Check input
@@ -34,25 +34,30 @@ def create_h5_file(args, name=None, split=None):
     if os.path.isfile(save_path):
         os.remove(save_path)
 
+    # Check valid region
+    if 'foxtech' in args.database_name or 'foxtech' in args.queries_name:
+        valid_region = valid_region_uav
+    else:
+        valid_region = valid_region_satellite
     # database region must be overlap with queries region
     # train at left half and val at right half
     if split == 'train':
-        database_queries_region = [valid_region_uav[0] + args.crop_width,
-                                 valid_region_uav[1] + args.crop_width,
-                                 (valid_region_uav[0] + valid_region_uav[2])//2 - args.crop_width, 
-                                 (valid_region_uav[1] + valid_region_uav[3])//2 - args.crop_width] #top, left, bottom, right
+        database_queries_region = [valid_region[0] + args.crop_width,
+                                 valid_region[1] + args.crop_width,
+                                 (valid_region[0] + valid_region[2])//2 - args.crop_width, 
+                                 (valid_region[1] + valid_region[3])//2 - args.crop_width] #top, left, bottom, right
     else:
-        database_queries_region = [(valid_region_uav[0] + valid_region_uav[2])//2 + args.crop_width,
-                                 (valid_region_uav[1] + valid_region_uav[3])//2 + args.crop_width,
-                                 valid_region_uav[2] - args.crop_width, 
-                                 valid_region_uav[3] - args.crop_width] #top, left, bottom, right
+        database_queries_region = [(valid_region[0] + valid_region[2])//2 + args.crop_width,
+                                 (valid_region[1] + valid_region[3])//2 + args.crop_width,
+                                 valid_region[2] - args.crop_width, 
+                                 valid_region[3] - args.crop_width] #top, left, bottom, right
     # Write h5 
     with h5py.File(save_path, "a") as hf:
         start = False
         img_names = []
         if queries_database_sampling == 'random':
-            cood_y = np.random.randint(database_queries_region[0], database_queries_region[2], size = sample_num)
-            cood_x = np.random.randint(database_queries_region[1], database_queries_region[3], size = sample_num)
+            cood_y = np.random.randint(database_queries_region[0], database_queries_region[2], size = args.sample_num)
+            cood_x = np.random.randint(database_queries_region[1], database_queries_region[3], size = args.sample_num)
         for i in tqdm(range(len(cood_y))):
             name = f'@{cood_y[i]}@{cood_x[i]}'
             img_names.append(name)
@@ -120,7 +125,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--queries_name",
         type=str,
-        choices=['sirmionemapping', 'thermalmapping', 'foxtechmapping'],
+        choices=['satellite', 'sirmionemapping', 'thermalmapping', 'foxtechmapping'],
         help="The name of queries map you want to use"
     )
     parser.add_argument(
@@ -129,6 +134,7 @@ if __name__ == "__main__":
         help="The index of queries flight you want to use. For satellite map, it is forced to be 0"
     )
     parser.add_argument("--crop_width", type=int, default=512)
+    parser.add_argument("--sample_num", type=int)
     parser.add_argument("--compress", action="store_true")
     args = parser.parse_args()
 

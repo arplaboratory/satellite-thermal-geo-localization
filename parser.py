@@ -225,9 +225,9 @@ def parse_arguments():
         help="only for majority voting, scale factor, the higher it is the more importance is given to agreement",
     )
     parser.add_argument("--efficient_ram_testing", action="store_true", help="_")
-    parser.add_argument("--val_positive_dist_threshold", type=int, default=25, help="_")
+    parser.add_argument("--val_positive_dist_threshold", type=int, default=100, help="_")
     parser.add_argument(
-        "--train_positives_dist_threshold", type=int, default=10, help="_"
+        "--train_positives_dist_threshold", type=int, default=25, help="_"
     )
     parser.add_argument(
         "--recall_values",
