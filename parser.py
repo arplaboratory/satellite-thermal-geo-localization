@@ -17,6 +17,11 @@ def parse_arguments():
         help="Choose to use triplet or other methods"
         )
     parser.add_argument(
+        "--multi_process_mining",
+        action = "store_true",
+        help="Choose if we use multiprocessing for mining. Only work for full mining."
+        )
+    parser.add_argument(
         "--train_batch_size",
         type=int,
         default=4,
@@ -200,7 +205,7 @@ def parse_arguments():
     parser.add_argument(
         "--resize",
         type=int,
-        default=[480, 640],
+        default=[512, 512],
         nargs=2,
         help="Resizing shape for images (HxW).",
     )
@@ -314,4 +319,6 @@ def parse_arguments():
     if args.pca_dim != None and args.pca_dataset_folder == None:
         raise ValueError("Please specify --pca_dataset_folder when using pca")
 
+    if args.multi_process_mining and args.mining != 'full':
+        raise NotImplementedError("Multiprocessing mining can only be used for full mining at current stage")
     return args

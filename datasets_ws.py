@@ -12,6 +12,7 @@ import torchvision.transforms as transforms
 from torch.utils.data.dataset import Subset
 from sklearn.neighbors import NearestNeighbors
 from torch.utils.data.dataloader import DataLoader
+from multiprocessing import Pool
 import h5py
 
 base_transform = transforms.Compose(
@@ -543,33 +544,45 @@ class TripletsDataset(BaseDataset):
         )
 
         # This loop's iterations could be done individually in the __getitem__(). This way is slower but clearer (and yields same results)
-        for query_index in tqdm(sampled_queries_indexes, ncols=100):
-            query_features = self.get_query_features(query_index, cache)
-            best_positive_index = self.get_best_positive_index(
-                args, query_index, cache, query_features
-            )
-            # Choose 1000 random database images (neg_indexes)
-            neg_indexes = np.random.choice(
-                self.database_num, self.neg_samples_num, replace=False
-            )
-            # Remove the eventual soft_positives from neg_indexes
-            soft_positives = self.soft_positives_per_query[query_index]
-            neg_indexes = np.setdiff1d(neg_indexes, soft_positives, assume_unique=True)
-            # Concatenate neg_indexes with the previous top 10 negatives (neg_cache)
-            neg_indexes = np.unique(
-                np.concatenate([self.neg_cache[query_index], neg_indexes])
-            )
-            # Search the hardest negatives
-            neg_indexes = self.get_hardest_negatives_indexes(
-                args, cache, query_features, neg_indexes
-            )
-            # Update nearest negatives in neg_cache
-            self.neg_cache[query_index] = neg_indexes
-            self.triplets_global_indexes.append(
-                (query_index, best_positive_index, *neg_indexes)
-            )
+        if not args.multi_process_mining:
+            for query_index in tqdm(sampled_queries_indexes, ncols=100):
+                triplets = self.compute_triplets_single(args, query_index, cache)
+                self.triplets_global_indexes.append(triplets)
+        else:
+            # pool = Pool(32)
+            # triplets_list = []
+            # for query_index in sampled_queries_indexes:
+            #     triplets_list.append(pool.apply_async(self.compute_triplets_single, (args, query_index, cache, )))
+            # for i in tqdm(range(len(sampled_queries_indexes)), ncols=100):
+            #     self.triplets_global_indexes.append(triplets_list[i].get())
+            raise NotImplementedError()
+            
         # self.triplets_global_indexes is a tensor of shape [1000, 12]
         self.triplets_global_indexes = torch.tensor(self.triplets_global_indexes)
+        
+    def compute_triplets_single(self, args, query_index, cache):
+        query_features = self.get_query_features(query_index, cache)
+        best_positive_index = self.get_best_positive_index(
+            args, query_index, cache, query_features
+        )
+        # Choose 1000 random database images (neg_indexes)
+        neg_indexes = np.random.choice(
+            self.database_num, self.neg_samples_num, replace=False
+        )
+        # Remove the eventual soft_positives from neg_indexes
+        soft_positives = self.soft_positives_per_query[query_index]
+        neg_indexes = np.setdiff1d(neg_indexes, soft_positives, assume_unique=True)
+        # Concatenate neg_indexes with the previous top 10 negatives (neg_cache)
+        neg_indexes = np.unique(
+            np.concatenate([self.neg_cache[query_index], neg_indexes])
+        )
+        # Search the hardest negatives
+        neg_indexes = self.get_hardest_negatives_indexes(
+            args, cache, query_features, neg_indexes
+        )
+        # Update nearest negatives in neg_cache
+        self.neg_cache[query_index] = neg_indexes
+        return (query_index, best_positive_index, *neg_indexes)
 
     def compute_triplets_partial(self, args, model):
         self.triplets_global_indexes = []

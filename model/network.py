@@ -147,15 +147,15 @@ def get_backbone(args):
                     params.requires_grad = False
         if args.backbone.endswith("conv4"):
             if not args.unfreeze:
-                logging.debug(f"Train only conv4_x of the resnet{args.backbone.split('conv')[0]} (remove conv5_x), freeze the previous ones")
+                logging.debug(f"Train only conv4_x of the {args.backbone.split('conv')[0]} (remove conv5_x), freeze the previous ones")
             else:
-                logging.debug(f"Train only conv4_x of the resnet{args.backbone.split('conv')[0]} (remove conv5_x)")
+                logging.debug(f"Train only conv4_x of the {args.backbone.split('conv')[0]} (remove conv5_x)")
             layers = list(backbone.children())[:-3]
         elif args.backbone.endswith("conv5"):
             if not args.unfreeze:
-                logging.debug(f"Train only conv4_x and conv5_x of the resnet{args.backbone.split('conv')[0]}, freeze the previous ones")
+                logging.debug(f"Train only conv4_x and conv5_x of the {args.backbone.split('conv')[0]}, freeze the previous ones")
             else:
-                logging.debug(f"Train only conv4_x and conv5_x of the resnet{args.backbone.split('conv')[0]}")
+                logging.debug(f"Train only conv4_x and conv5_x of the {args.backbone.split('conv')[0]}")
             layers = list(backbone.children())[:-2]
     elif args.backbone == "vgg16":
         if args.pretrain in ['places', 'gldv2']:
