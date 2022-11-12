@@ -1,6 +1,7 @@
 import os
 import torch
 import faiss
+import faiss.contrib.torch_utils
 import logging
 import numpy as np
 from glob import glob
@@ -12,8 +13,8 @@ import torchvision.transforms as transforms
 from torch.utils.data.dataset import Subset
 from sklearn.neighbors import NearestNeighbors
 from torch.utils.data.dataloader import DataLoader
-from pathos.threading import ThreadPool
 import h5py
+import time
 
 base_transform = transforms.Compose(
     [
@@ -375,6 +376,8 @@ class TripletsDataset(BaseDataset):
                 + "#night_indexes; [{len(night_indexes)}/{self.queries_num}]"
             )
 
+        self.ngpu = torch.cuda.device_count()
+
     def __getitem__(self, index):
         if self.is_inference:
             # At inference time return the single image. This is used for caching or computing NetVLAD's clusters
@@ -439,12 +442,13 @@ class TripletsDataset(BaseDataset):
 
         # RAMEfficient2DMatrix can be replaced by np.zeros, but using
         # RAMEfficient2DMatrix is RAM efficient for full database mining.
-        cache = RAMEfficient2DMatrix(cache_shape, dtype=np.float32)
+        # cache = RAMEfficient2DMatrix(cache_shape, dtype=np.float32)
+        cache = torch.zeros(cache_shape).to(args.device)
         with torch.no_grad():
             for images, indexes in tqdm(subset_dl, ncols=100):
                 images = images.to(args.device)
                 features = model(images)
-                cache[indexes.numpy()] = features.cpu().numpy()
+                cache[indexes] = features
         return cache
 
     def get_query_features(self, query_index, cache):
@@ -459,24 +463,22 @@ class TripletsDataset(BaseDataset):
 
     def get_best_positive_index(self, args, query_index, cache, query_features):
         positives_features = cache[self.hard_positives_per_query[query_index]]
-        faiss_index = faiss.IndexFlatL2(args.features_dim)
+        faiss_index = faiss.GpuIndexFlatL2(self.gpu_resources[0], args.features_dim)
         faiss_index.add(positives_features)
         # Search the best positive (within 10 meters AND nearest in features space)
         _, best_positive_num = faiss_index.search(query_features.reshape(1, -1), 1)
-        best_positive_index = self.hard_positives_per_query[query_index][
-            best_positive_num[0]
-        ].item()
+        best_positive_index = self.hard_positives_per_query[query_index][best_positive_num[0]].item()
         return best_positive_index
-
+        
     def get_hardest_negatives_indexes(self, args, cache, query_features, neg_samples):
         neg_features = cache[neg_samples]
-        faiss_index = faiss.IndexFlatL2(args.features_dim)
+        faiss_index = faiss.GpuIndexFlatL2(self.gpu_resources[1], args.features_dim)
         faiss_index.add(neg_features)
         # Search the 10 nearest negatives (further than 25 meters and nearest in features space)
         _, neg_nums = faiss_index.search(
             query_features.reshape(1, -1), self.negs_num_per_query
         )
-        neg_nums = neg_nums.reshape(-1)
+        neg_nums = neg_nums.reshape(-1).cpu()
         neg_indexes = neg_samples[neg_nums].astype(np.int32)
         return neg_indexes
 
@@ -539,31 +541,38 @@ class TripletsDataset(BaseDataset):
         subset_ds = Subset(
             self, database_indexes + list(sampled_queries_indexes + self.database_num)
         )
-        self.local_cache = self.compute_cache(
+        cache = self.compute_cache(
             args, model, subset_ds, (len(self), args.features_dim)
         )
+
+        # Tmp memory for faiss
+        self.gpu_resources = []
+        for i in range(2):
+            # 2 gpu resource for positive and negative
+            res = faiss.StandardGpuResources()
+            res.setTempMemory(200 * 1024 * 1024) # 200 MB
+            self.gpu_resources.append(res)
 
         # This loop's iterations could be done individually in the __getitem__(). This way is slower but clearer (and yields same results)
         if not args.multi_process_mining:
             for query_index in tqdm(sampled_queries_indexes, ncols=100):
-                triplets = self.compute_triplets_single(args, query_index)
+                triplets = self.compute_triplets_single(args, query_index, cache)
                 self.triplets_global_indexes.append(triplets)
         else:
-            # pool = ThreadPool(nodes=8)
-            # triplets_list = []
-            # for query_index in sampled_queries_indexes:
-            #     triplets_list.append(pool.apipe(self.compute_triplets_single, args, query_index))
-            # for i in tqdm(range(len(sampled_queries_indexes)), ncols=100):
-            #     self.triplets_global_indexes.append(triplets_list[i].get())
             raise NotImplementedError
-            
+        
+        # Remove Tmp memory for faiss
+        del cache
+        del self.gpu_resources
+        torch.cuda.empty_cache()
+
         # self.triplets_global_indexes is a tensor of shape [1000, 12]
         self.triplets_global_indexes = torch.tensor(self.triplets_global_indexes)
-        
-    def compute_triplets_single(self, args, query_index):
-        query_features = self.get_query_features(query_index, self.local_cache)
+
+    def compute_triplets_single(self, args, query_index, cache):
+        query_features = self.get_query_features(query_index, cache)
         best_positive_index = self.get_best_positive_index(
-            args, query_index, self.local_cache, query_features
+            args, query_index,cache, query_features
         )
         # Choose 1000 random database images (neg_indexes)
         neg_indexes = np.random.choice(
@@ -578,7 +587,7 @@ class TripletsDataset(BaseDataset):
         )
         # Search the hardest negatives
         neg_indexes = self.get_hardest_negatives_indexes(
-            args, self.local_cache, query_features, neg_indexes
+            args, cache, query_features, neg_indexes
         )
         # Update nearest negatives in neg_cache
         self.neg_cache[query_index] = neg_indexes
