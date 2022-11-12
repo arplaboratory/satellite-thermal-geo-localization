@@ -136,6 +136,16 @@ class BaseDataset(data.Dataset):
             return_distance=False,
         )
 
+        # Find hard_negatives_per_query. Hard negative is out of prior position threshold and we don't care
+        if args.prior_position_threshold != -1:
+            knn = NearestNeighbors(n_jobs=-1)
+            knn.fit(self.database_utms)
+            self.hard_negatives_per_query = knn.radius_neighbors(
+                self.queries_utms,
+                radius=args.prior_position_threshold,
+                return_distance=False,
+            )
+
         # Add database, queries prefix
         for i in range(len(self.database_paths)):
             self.database_paths[i] = "database_" + self.database_paths[i]
@@ -562,10 +572,19 @@ class TripletsDataset(BaseDataset):
                 size=self.negs_num_per_query + len(soft_positives),
                 replace=False,
             )
-            neg_indexes = np.setdiff1d(neg_indexes, soft_positives, assume_unique=True)[
-                : self.negs_num_per_query
-            ]
 
+            # Remove hard_negatives
+            if args.prior_location_threshold == -1:
+                neg_indexes = np.setdiff1d(neg_indexes, soft_positives, assume_unique=True)[
+                    : self.negs_num_per_query
+                ]
+            else:
+                neg_indexes = np.setdiff1d(neg_indexes, soft_positives, assume_unique=True)
+                hard_negatives = self.hard_negatives_per_query[query_index]
+                neg_indexes = np.setdiff1d(neg_indexes, hard_negatives, assume_unique=True)[
+                    : self.negs_num_per_query
+                ]
+            
             self.triplets_global_indexes.append(
                 (query_index, best_positive_index, *neg_indexes)
             )
@@ -620,6 +639,12 @@ class TripletsDataset(BaseDataset):
             soft_positives = self.soft_positives_per_query[query_index]
             neg_indexes = np.setdiff1d(
                 neg_indexes, soft_positives, assume_unique=True)
+
+            # Remove the eventual hard_negatives from neg_indexes
+            if args.prior_location_threshold != -1:
+                hard_negatives = self.hard_negatives_per_query[query_index]
+                neg_indexes = np.setdiff1d(neg_indexes, hard_negatives, assume_unique=True)
+
             # Concatenate neg_indexes with the previous top 10 negatives (neg_cache)
             neg_indexes = np.unique(
                 np.concatenate([self.neg_cache[query_index], neg_indexes])
@@ -698,6 +723,11 @@ class TripletsDataset(BaseDataset):
             neg_indexes = np.setdiff1d(
                 sampled_database_indexes, soft_positives, assume_unique=True
             )
+
+            # Remove the eventual hard_negatives from neg_indexes
+            if args.prior_location_threshold != -1:
+                hard_negatives = self.hard_negatives_per_query[query_index]
+                neg_indexes = np.setdiff1d(neg_indexes, hard_negatives, assume_unique=True)
 
             # Take all database images that are negatives and are within the sampled database images (aka database_indexes)
             neg_indexes = self.get_hardest_negatives_indexes(

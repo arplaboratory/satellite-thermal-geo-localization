@@ -22,6 +22,12 @@ def parse_arguments():
         help="Choose if we use faiss gpu version for mining. Only work for full and partial."
     )
     parser.add_argument(
+        "--prior_location_threshold",
+        type=int,
+        default=-1,
+        help="The threshold of search region from prior knowledge for train and test. If -1, then no prior knowledge"
+    )
+    parser.add_argument(
         "--train_batch_size",
         type=int,
         default=4,
@@ -325,4 +331,6 @@ def parse_arguments():
     if args.pca_dim != None and args.pca_dataset_folder == None:
         raise ValueError("Please specify --pca_dataset_folder when using pca")
 
+    if args.prior_position_threshold != -1 and args.prior_position_threshold <= args.val_positive_dist_threshold:
+        raise ValueError(f"Prior position theshold is too small to get enough negative samples. Set it to be more than {val_positive_dist_threshold}")
     return args
