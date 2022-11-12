@@ -510,7 +510,10 @@ class TripletsDataset(BaseDataset):
         _, neg_nums = faiss_index.search(
             query_features.reshape(1, -1), self.negs_num_per_query
         )
-        neg_nums = neg_nums.reshape(-1).cpu()
+        if args.use_faiss_gpu:
+            neg_nums = neg_nums.reshape(-1).cpu()
+        else:
+            neg_nums = neg_nums.reshape(-1)
         neg_indexes = neg_samples[neg_nums].astype(np.int32)
         return neg_indexes
 
