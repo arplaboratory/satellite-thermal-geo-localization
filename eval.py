@@ -72,11 +72,13 @@ if args.off_the_shelf.startswith("radenovic") or args.off_the_shelf.startswith("
             1
         ]  # sfm or gldv1 datasets
         url = OFF_THE_SHELF_RADENOVIC[f"{args.backbone}_{pretrain_dataset_name}"]
-        state_dict = load_url(url, model_dir=join("data", "off_the_shelf_nets"))
+        state_dict = load_url(url, model_dir=join(
+            "data", "off_the_shelf_nets"))
     else:
         # This is a hacky workaround to maintain compatibility
         sys.modules["sklearn.decomposition.pca"] = sklearn.decomposition._pca
-        zip_file_path = join("data", "off_the_shelf_nets", args.backbone + "_naver.zip")
+        zip_file_path = join("data", "off_the_shelf_nets",
+                             args.backbone + "_naver.zip")
         if not os.path.exists(zip_file_path):
             gdd.download_file_from_google_drive(
                 file_id=OFF_THE_SHELF_NAVER[args.backbone],
@@ -87,10 +89,12 @@ if args.off_the_shelf.startswith("radenovic") or args.off_the_shelf.startswith("
             state_dict_filename = "Resnet50-AP-GeM.pt"
         elif args.backbone == "resnet101conv5":
             state_dict_filename = "Resnet-101-AP-GeM.pt"
-        state_dict = torch.load(join("data", "off_the_shelf_nets", state_dict_filename))
+        state_dict = torch.load(
+            join("data", "off_the_shelf_nets", state_dict_filename))
     state_dict = state_dict["state_dict"]
     model_keys = model.state_dict().keys()
-    renamed_state_dict = {k: v for k, v in zip(model_keys, state_dict.values())}
+    renamed_state_dict = {k: v for k, v in zip(
+        model_keys, state_dict.values())}
     model.load_state_dict(renamed_state_dict)
 elif args.resume is not None:
     logging.info(f"Resuming model from {args.resume}")
@@ -104,10 +108,12 @@ if args.pca_dim is None:
 else:
     full_features_dim = args.features_dim
     args.features_dim = args.pca_dim
-    pca = util.compute_pca(args, model, args.pca_dataset_folder, full_features_dim)
+    pca = util.compute_pca(
+        args, model, args.pca_dataset_folder, full_features_dim)
 
 ######################################### DATASETS #########################################
-test_ds = datasets_ws.BaseDataset(args, args.datasets_folder, args.dataset_name, "test")
+test_ds = datasets_ws.BaseDataset(
+    args, args.datasets_folder, args.dataset_name, "test")
 logging.info(f"Test set: {test_ds}")
 
 ######################################### TEST on TEST SET #########################################

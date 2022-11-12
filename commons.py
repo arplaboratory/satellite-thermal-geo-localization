@@ -44,7 +44,8 @@ def setup_logging(
         raise FileExistsError(f"{save_dir} already exists!")
     os.makedirs(save_dir, exist_ok=True)
     # logging.Logger.manager.loggerDict.keys() to check which loggers are in use
-    base_formatter = logging.Formatter("%(asctime)s   %(message)s", "%Y-%m-%d %H:%M:%S")
+    base_formatter = logging.Formatter(
+        "%(asctime)s   %(message)s", "%Y-%m-%d %H:%M:%S")
     logger = logging.getLogger("")
     logger.setLevel(logging.DEBUG)
 
@@ -55,7 +56,8 @@ def setup_logging(
         logger.addHandler(info_file_handler)
 
     if debug_filename != None:
-        debug_file_handler = logging.FileHandler(join(save_dir, debug_filename))
+        debug_file_handler = logging.FileHandler(
+            join(save_dir, debug_filename))
         debug_file_handler.setLevel(logging.DEBUG)
         debug_file_handler.setFormatter(base_formatter)
         logger.addHandler(debug_file_handler)

@@ -19,7 +19,8 @@ import time
 base_transform = transforms.Compose(
     [
         transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[
+                             0.229, 0.224, 0.225]),
     ]
 )
 
@@ -62,7 +63,8 @@ class PCADataset(data.Dataset):
     ):
         dataset_folder_full_path = join(datasets_folder, dataset_folder)
         if not os.path.exists(dataset_folder_full_path):
-            raise FileNotFoundError(f"Folder {dataset_folder_full_path} does not exist")
+            raise FileNotFoundError(
+                f"Folder {dataset_folder_full_path} does not exist")
         self.images_paths = sorted(
             glob(join(dataset_folder_full_path, "**", "*.jpg"), recursive=True)
         )
@@ -89,7 +91,7 @@ class BaseDataset(data.Dataset):
         self.resize = args.resize
         self.test_method = args.test_method
 
-        #### Redirect datafolder path to h5
+        # Redirect datafolder path to h5
         self.database_folder_h5_path = join(
             datasets_folder, dataset_name, split + "_database.h5"
         )
@@ -99,15 +101,16 @@ class BaseDataset(data.Dataset):
         database_folder_h5_df = h5py.File(self.database_folder_h5_path, "r")
         queries_folder_h5_df = h5py.File(self.queries_folder_h5_path, "r")
 
-        #### Map name to index
+        # Map name to index
         self.database_name_dict = {}
         self.queries_name_dict = {}
         for index, database_image_name in enumerate(database_folder_h5_df["image_name"]):
-            self.database_name_dict[database_image_name.decode("UTF-8")] = index
+            self.database_name_dict[database_image_name.decode(
+                "UTF-8")] = index
         for index, queries_image_name in enumerate(queries_folder_h5_df["image_name"]):
             self.queries_name_dict[queries_image_name.decode("UTF-8")] = index
 
-        #### Read paths and UTM coordinates for all images.
+        # Read paths and UTM coordinates for all images.
         # database_folder = join(self.dataset_folder, "database")
         # queries_folder  = join(self.dataset_folder, "queries")
         # if not os.path.exists(database_folder): raise FileNotFoundError(f"Folder {database_folder} does not exist")
@@ -116,10 +119,12 @@ class BaseDataset(data.Dataset):
         self.queries_paths = sorted(self.queries_name_dict)
         # The format must be path/to/file/@utm_easting@utm_northing@...@.jpg
         self.database_utms = np.array(
-            [(path.split("@")[1], path.split("@")[2]) for path in self.database_paths]
+            [(path.split("@")[1], path.split("@")[2])
+             for path in self.database_paths]
         ).astype(np.float)
         self.queries_utms = np.array(
-            [(path.split("@")[1], path.split("@")[2]) for path in self.queries_paths]
+            [(path.split("@")[1], path.split("@")[2])
+             for path in self.queries_paths]
         ).astype(np.float)
 
         # Find soft_positives_per_query, which are within val_positive_dist_threshold (deafult 25 meters)
@@ -137,22 +142,25 @@ class BaseDataset(data.Dataset):
         for i in range(len(self.queries_paths)):
             self.queries_paths[i] = "queries_" + self.queries_paths[i]
 
-        self.images_paths = list(self.database_paths) + list(self.queries_paths)
+        self.images_paths = list(self.database_paths) + \
+            list(self.queries_paths)
 
         self.database_num = len(self.database_paths)
         self.queries_num = len(self.queries_paths)
 
-        #### Close h5 and initialize for h5 reading in __getitem__
+        # Close h5 and initialize for h5 reading in __getitem__
         self.database_folder_h5_df = None
         self.queries_folder_h5_df = None
         database_folder_h5_df.close()
         queries_folder_h5_df.close()
 
     def __getitem__(self, index):
-        #### Init
+        # Init
         if self.database_folder_h5_df is None:
-            self.database_folder_h5_df = h5py.File(self.database_folder_h5_path, "r")
-            self.queries_folder_h5_df = h5py.File(self.queries_folder_h5_path, "r")
+            self.database_folder_h5_df = h5py.File(
+                self.database_folder_h5_path, "r")
+            self.queries_folder_h5_df = h5py.File(
+                self.queries_folder_h5_path, "r")
         img = self._find_img_in_h5(index)
         img = base_transform(img)
         # With database images self.test_method should always be "hard_resize"
@@ -198,13 +206,14 @@ class BaseDataset(data.Dataset):
         return processed_img
 
     def _find_img_in_h5(self, index, database_queries_split=None):
-        #### Find inside index for h5
+        # Find inside index for h5
         if database_queries_split is None:
             image_name = "_".join(self.images_paths[index].split("_")[1:])
             database_queries_split = self.images_paths[index].split("_")[0]
         else:
             if database_queries_split == "database":
-                image_name = "_".join(self.database_paths[index].split("_")[1:])
+                image_name = "_".join(
+                    self.database_paths[index].split("_")[1:])
             elif database_queries_split == "queries":
                 image_name = "_".join(self.queries_paths[index].split("_")[1:])
             else:
@@ -327,9 +336,10 @@ class TripletsDataset(BaseDataset):
             )
         )
 
-        #### Some queries might have no positive, we should remove those queries.
+        # Some queries might have no positive, we should remove those queries.
         queries_without_any_hard_positive = np.where(
-            np.array([len(p) for p in self.hard_positives_per_query], dtype=object) == 0
+            np.array([len(p)
+                     for p in self.hard_positives_per_query], dtype=object) == 0
         )[0]
         if len(queries_without_any_hard_positive) != 0:
             logging.info(
@@ -345,7 +355,8 @@ class TripletsDataset(BaseDataset):
         )
 
         # Recompute images_paths and queries_num because some queries might have been removed
-        self.images_paths = list(self.database_paths) + list(self.queries_paths)
+        self.images_paths = list(self.database_paths) + \
+            list(self.queries_paths)
         self.queries_num = len(self.queries_paths)
 
         # msls_weighted refers to the mining presented in MSLS paper's supplementary.
@@ -368,8 +379,10 @@ class TripletsDataset(BaseDataset):
             assert (
                 len(night_indexes) != 0 and len(sideways_indexes) != 0
             ), "There should be night and sideways images for msls_weighted mining, but there are none. Are you using Mapillary SLS?"
-            self.weights[night_indexes] += self.queries_num / len(night_indexes)
-            self.weights[sideways_indexes] += self.queries_num / len(sideways_indexes)
+            self.weights[night_indexes] += self.queries_num / \
+                len(night_indexes)
+            self.weights[sideways_indexes] += self.queries_num / \
+                len(sideways_indexes)
             self.weights /= self.weights.sum()
             logging.info(
                 f"#sideways_indexes [{len(sideways_indexes)}/{self.queries_num}]; "
@@ -383,16 +396,20 @@ class TripletsDataset(BaseDataset):
             # At inference time return the single image. This is used for caching or computing NetVLAD's clusters
             return super().__getitem__(index)
 
-        #### Init
+        # Init
         if self.database_folder_h5_df is None:
-            self.database_folder_h5_df = h5py.File(self.database_folder_h5_path, "r")
-            self.queries_folder_h5_df = h5py.File(self.queries_folder_h5_path, "r")
+            self.database_folder_h5_df = h5py.File(
+                self.database_folder_h5_path, "r")
+            self.queries_folder_h5_df = h5py.File(
+                self.queries_folder_h5_path, "r")
 
         query_index, best_positive_index, neg_indexes = torch.split(
-            self.triplets_global_indexes[index], (1, 1, self.negs_num_per_query)
+            self.triplets_global_indexes[index], (1,
+                                                  1, self.negs_num_per_query)
         )
 
-        query = self.query_transform(self._find_img_in_h5(query_index, "queries"))
+        query = self.query_transform(
+            self._find_img_in_h5(query_index, "queries"))
         positive = self.resized_transform(
             self._find_img_in_h5(best_positive_index, "database")
         )
@@ -463,16 +480,20 @@ class TripletsDataset(BaseDataset):
 
     def get_best_positive_index(self, args, query_index, cache, query_features):
         positives_features = cache[self.hard_positives_per_query[query_index]]
-        faiss_index = faiss.GpuIndexFlatL2(self.gpu_resources[0], args.features_dim)
+        faiss_index = faiss.GpuIndexFlatL2(
+            self.gpu_resources[0], args.features_dim)
         faiss_index.add(positives_features)
         # Search the best positive (within 10 meters AND nearest in features space)
-        _, best_positive_num = faiss_index.search(query_features.reshape(1, -1), 1)
-        best_positive_index = self.hard_positives_per_query[query_index][best_positive_num[0]].item()
+        _, best_positive_num = faiss_index.search(
+            query_features.reshape(1, -1), 1)
+        best_positive_index = self.hard_positives_per_query[query_index][best_positive_num[0]].item(
+        )
         return best_positive_index
-        
+
     def get_hardest_negatives_indexes(self, args, cache, query_features, neg_samples):
         neg_features = cache[neg_samples]
-        faiss_index = faiss.GpuIndexFlatL2(self.gpu_resources[1], args.features_dim)
+        faiss_index = faiss.GpuIndexFlatL2(
+            self.gpu_resources[1], args.features_dim)
         faiss_index.add(neg_features)
         # Search the 10 nearest negatives (further than 25 meters and nearest in features space)
         _, neg_nums = faiss_index.search(
@@ -499,7 +520,8 @@ class TripletsDataset(BaseDataset):
 
         # Compute the cache only for queries and their positives, in order to find the best positive
         subset_ds = Subset(
-            self, positives_indexes + list(sampled_queries_indexes + self.database_num)
+            self, positives_indexes +
+            list(sampled_queries_indexes + self.database_num)
         )
         cache = self.compute_cache(
             args, model, subset_ds, (len(self), args.features_dim)
@@ -527,7 +549,8 @@ class TripletsDataset(BaseDataset):
                 (query_index, best_positive_index, *neg_indexes)
             )
         # self.triplets_global_indexes is a tensor of shape [1000, 12]
-        self.triplets_global_indexes = torch.tensor(self.triplets_global_indexes)
+        self.triplets_global_indexes = torch.tensor(
+            self.triplets_global_indexes)
 
     def compute_triplets_full(self, args, model):
         self.triplets_global_indexes = []
@@ -539,7 +562,8 @@ class TripletsDataset(BaseDataset):
         database_indexes = list(range(self.database_num))
         #  Compute features for all images and store them in cache
         subset_ds = Subset(
-            self, database_indexes + list(sampled_queries_indexes + self.database_num)
+            self, database_indexes +
+            list(sampled_queries_indexes + self.database_num)
         )
         cache = self.compute_cache(
             args, model, subset_ds, (len(self), args.features_dim)
@@ -550,29 +574,31 @@ class TripletsDataset(BaseDataset):
         for i in range(2):
             # 2 gpu resource for positive and negative
             res = faiss.StandardGpuResources()
-            res.setTempMemory(200 * 1024 * 1024) # 200 MB
+            res.setTempMemory(200 * 1024 * 1024)  # 200 MB
             self.gpu_resources.append(res)
 
         # This loop's iterations could be done individually in the __getitem__(). This way is slower but clearer (and yields same results)
         if not args.multi_process_mining:
             for query_index in tqdm(sampled_queries_indexes, ncols=100):
-                triplets = self.compute_triplets_single(args, query_index, cache)
+                triplets = self.compute_triplets_single(
+                    args, query_index, cache)
                 self.triplets_global_indexes.append(triplets)
         else:
             raise NotImplementedError
-        
+
         # Remove Tmp memory for faiss
         del cache
         del self.gpu_resources
         torch.cuda.empty_cache()
 
         # self.triplets_global_indexes is a tensor of shape [1000, 12]
-        self.triplets_global_indexes = torch.tensor(self.triplets_global_indexes)
+        self.triplets_global_indexes = torch.tensor(
+            self.triplets_global_indexes)
 
     def compute_triplets_single(self, args, query_index, cache):
         query_features = self.get_query_features(query_index, cache)
         best_positive_index = self.get_best_positive_index(
-            args, query_index,cache, query_features
+            args, query_index, cache, query_features
         )
         # Choose 1000 random database images (neg_indexes)
         neg_indexes = np.random.choice(
@@ -580,7 +606,8 @@ class TripletsDataset(BaseDataset):
         )
         # Remove the eventual soft_positives from neg_indexes
         soft_positives = self.soft_positives_per_query[query_index]
-        neg_indexes = np.setdiff1d(neg_indexes, soft_positives, assume_unique=True)
+        neg_indexes = np.setdiff1d(
+            neg_indexes, soft_positives, assume_unique=True)
         # Concatenate neg_indexes with the previous top 10 negatives (neg_cache)
         neg_indexes = np.unique(
             np.concatenate([self.neg_cache[query_index], neg_indexes])
@@ -621,7 +648,8 @@ class TripletsDataset(BaseDataset):
         database_indexes = list(np.unique(database_indexes))
 
         subset_ds = Subset(
-            self, database_indexes + list(sampled_queries_indexes + self.database_num)
+            self, database_indexes +
+            list(sampled_queries_indexes + self.database_num)
         )
         cache = self.compute_cache(
             args, model, subset_ds, cache_shape=(len(self), args.features_dim)
@@ -648,7 +676,8 @@ class TripletsDataset(BaseDataset):
                 (query_index, best_positive_index, *neg_indexes)
             )
         # self.triplets_global_indexes is a tensor of shape [1000, 12]
-        self.triplets_global_indexes = torch.tensor(self.triplets_global_indexes)
+        self.triplets_global_indexes = torch.tensor(
+            self.triplets_global_indexes)
 
 
 class RAMEfficient2DMatrix:
@@ -682,6 +711,7 @@ class PairsDataset(BaseDataset):
     this is used for example when computing the cache, because we compute features
     of each image, not triplets.
     """
+
     def __init__(
         self,
         args,
@@ -752,9 +782,10 @@ class PairsDataset(BaseDataset):
             )
         )
 
-        #### Some queries might have no positive, we should remove those queries.
+        # Some queries might have no positive, we should remove those queries.
         queries_without_any_hard_positive = np.where(
-            np.array([len(p) for p in self.hard_positives_per_query], dtype=object) == 0
+            np.array([len(p)
+                     for p in self.hard_positives_per_query], dtype=object) == 0
         )[0]
         if len(queries_without_any_hard_positive) != 0:
             logging.info(
@@ -770,7 +801,8 @@ class PairsDataset(BaseDataset):
         )
 
         # Recompute images_paths and queries_num because some queries might have been removed
-        self.images_paths = list(self.database_paths) + list(self.queries_paths)
+        self.images_paths = list(self.database_paths) + \
+            list(self.queries_paths)
         self.queries_num = len(self.queries_paths)
 
         # msls_weighted refers to the mining presented in MSLS paper's supplementary.
@@ -793,8 +825,10 @@ class PairsDataset(BaseDataset):
             assert (
                 len(night_indexes) != 0 and len(sideways_indexes) != 0
             ), "There should be night and sideways images for msls_weighted mining, but there are none. Are you using Mapillary SLS?"
-            self.weights[night_indexes] += self.queries_num / len(night_indexes)
-            self.weights[sideways_indexes] += self.queries_num / len(sideways_indexes)
+            self.weights[night_indexes] += self.queries_num / \
+                len(night_indexes)
+            self.weights[sideways_indexes] += self.queries_num / \
+                len(sideways_indexes)
             self.weights /= self.weights.sum()
             logging.info(
                 f"#sideways_indexes [{len(sideways_indexes)}/{self.queries_num}]; "
@@ -806,16 +840,20 @@ class PairsDataset(BaseDataset):
             # At inference time return the single image. This is used for caching or computing NetVLAD's clusters
             return super().__getitem__(index)
 
-        #### Init
+        # Init
         if self.database_folder_h5_df is None:
-            self.database_folder_h5_df = h5py.File(self.database_folder_h5_path, "r")
-            self.queries_folder_h5_df = h5py.File(self.queries_folder_h5_path, "r")
+            self.database_folder_h5_df = h5py.File(
+                self.database_folder_h5_path, "r")
+            self.queries_folder_h5_df = h5py.File(
+                self.queries_folder_h5_path, "r")
 
         query_index, best_positive_index, neg_indexes = torch.split(
-            self.triplets_global_indexes[index], (1, 1, self.negs_num_per_query)
+            self.triplets_global_indexes[index], (1,
+                                                  1, self.negs_num_per_query)
         )
 
-        query = self.query_transform(self._find_img_in_h5(query_index, "queries"))
+        query = self.query_transform(
+            self._find_img_in_h5(query_index, "queries"))
         positive = self.resized_transform(
             self._find_img_in_h5(best_positive_index, "database")
         )

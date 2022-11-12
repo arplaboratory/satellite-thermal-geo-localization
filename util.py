@@ -16,7 +16,8 @@ def get_flops(model, input_shape=(480, 640)):
     assert (
         len(input_shape) == 2
     ), f"input_shape should have len==2, but it's {input_shape}"
-    module_info = torchscan.crawl_module(model, (3, input_shape[0], input_shape[1]))
+    module_info = torchscan.crawl_module(
+        model, (3, input_shape[0], input_shape[1]))
     output = torchscan.utils.format_info(module_info)
     return re.findall("Floating Point Operations on forward: (.*)\n", output)[0]
 
@@ -60,17 +61,21 @@ def resume_train(args, model, optimizer=None, strict=False):
         f"Loaded checkpoint: start_epoch_num = {start_epoch_num}, "
         f"current_best_R@5 = {best_r5:.1f}"
     )
-    if args.resume.endswith("last_model.pth"):  # Copy best model to current save_dir
+    # Copy best model to current save_dir
+    if args.resume.endswith("last_model.pth"):
         shutil.copy(
-            args.resume.replace("last_model.pth", "best_model.pth"), args.save_dir
+            args.resume.replace(
+                "last_model.pth", "best_model.pth"), args.save_dir
         )
     return model, optimizer, best_r5, start_epoch_num, not_improved_num
 
 
 def compute_pca(args, model, pca_dataset_folder, full_features_dim):
     model = model.eval()
-    pca_ds = datasets_ws.PCADataset(args, args.datasets_folder, pca_dataset_folder)
-    dl = torch.utils.data.DataLoader(pca_ds, args.infer_batch_size, shuffle=True)
+    pca_ds = datasets_ws.PCADataset(
+        args, args.datasets_folder, pca_dataset_folder)
+    dl = torch.utils.data.DataLoader(
+        pca_ds, args.infer_batch_size, shuffle=True)
     pca_features = np.empty([min(len(pca_ds), 2**14), full_features_dim])
     with torch.no_grad():
         for i, images in enumerate(dl):
@@ -78,7 +83,7 @@ def compute_pca(args, model, pca_dataset_folder, full_features_dim):
                 break
             features = model(images).cpu().numpy()
             pca_features[
-                i * args.infer_batch_size : (i * args.infer_batch_size) + len(features)
+                i * args.infer_batch_size: (i * args.infer_batch_size) + len(features)
             ] = features
     pca = PCA(args.pca_dim)
     pca.fit(pca_features)

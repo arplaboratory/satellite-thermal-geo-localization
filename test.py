@@ -40,7 +40,8 @@ def test_efficient_ram_usage(args, eval_ds, model, test_method="hard_resize"):
         queries_subset_ds = Subset(
             eval_ds,
             list(
-                range(eval_ds.database_num, eval_ds.database_num + eval_ds.queries_num)
+                range(eval_ds.database_num,
+                      eval_ds.database_num + eval_ds.queries_num)
             ),
         )
         queries_dataloader = DataLoader(
@@ -55,7 +56,8 @@ def test_efficient_ram_usage(args, eval_ds, model, test_method="hard_resize"):
                 or test_method == "nearest_crop"
                 or test_method == "maj_voting"
             ):
-                inputs = torch.cat(tuple(inputs))  # shape = 5*bs x 3 x 480 x 480
+                # shape = 5*bs x 3 x 480 x 480
+                inputs = torch.cat(tuple(inputs))
             features = model(inputs.to(args.device))
             if test_method == "five_crops":  # Compute mean along the 5 crops
                 features = torch.stack(torch.split(features, 5)).mean(1)
@@ -69,7 +71,8 @@ def test_efficient_ram_usage(args, eval_ds, model, test_method="hard_resize"):
                     indices.numpy() - eval_ds.database_num, :
                 ] = features.cpu().numpy()
 
-        queries_features = torch.tensor(queries_features).type(torch.float32).cuda()
+        queries_features = torch.tensor(
+            queries_features).type(torch.float32).cuda()
 
         logging.debug("Extracting database features for evaluation/testing")
         # For database use "hard_resize", although it usually has no effect because database images have same resolution
@@ -117,9 +120,12 @@ def test_efficient_ram_usage(args, eval_ds, model, test_method="hard_resize"):
         predictions = np.reshape(predictions, (eval_ds.queries_num, 5, 20))
         for q in range(eval_ds.queries_num):
             # votings, modify distances in-place
-            top_n_voting("top1", predictions[q], distances[q], args.majority_weight)
-            top_n_voting("top5", predictions[q], distances[q], args.majority_weight)
-            top_n_voting("top10", predictions[q], distances[q], args.majority_weight)
+            top_n_voting("top1", predictions[q],
+                         distances[q], args.majority_weight)
+            top_n_voting("top5", predictions[q],
+                         distances[q], args.majority_weight)
+            top_n_voting("top10", predictions[q],
+                         distances[q], args.majority_weight)
 
             # flatten dist and preds from 5, 20 -> 20*5
             # and then proceed as usual to keep only first 20
@@ -141,7 +147,7 @@ def test_efficient_ram_usage(args, eval_ds, model, test_method="hard_resize"):
         ]  # keep only the closer 20 predictions for each query
     del distances
 
-    #### For each query, check if the predictions are correct
+    # For each query, check if the predictions are correct
     positives_per_query = eval_ds.get_positives()
     # args.recall_values by default is [1, 5, 10, 20]
     recalls = np.zeros(len(args.recall_values))
@@ -153,7 +159,8 @@ def test_efficient_ram_usage(args, eval_ds, model, test_method="hard_resize"):
 
     recalls = recalls / eval_ds.queries_num * 100
     recalls_str = ", ".join(
-        [f"R@{val}: {rec:.1f}" for val, rec in zip(args.recall_values, recalls)]
+        [f"R@{val}: {rec:.1f}" for val,
+            rec in zip(args.recall_values, recalls)]
     )
     return recalls, recalls_str
 
@@ -192,7 +199,8 @@ def test(args, eval_ds, model, test_method="hard_resize", pca=None):
                 dtype="float32",
             )
         else:
-            all_features = np.empty((len(eval_ds), args.features_dim), dtype="float32")
+            all_features = np.empty(
+                (len(eval_ds), args.features_dim), dtype="float32")
 
         for inputs, indices in tqdm(database_dataloader, ncols=100):
             features = model(inputs.to(args.device))
@@ -209,7 +217,8 @@ def test(args, eval_ds, model, test_method="hard_resize", pca=None):
         queries_subset_ds = Subset(
             eval_ds,
             list(
-                range(eval_ds.database_num, eval_ds.database_num + eval_ds.queries_num)
+                range(eval_ds.database_num,
+                      eval_ds.database_num + eval_ds.queries_num)
             ),
         )
         queries_dataloader = DataLoader(
@@ -224,7 +233,8 @@ def test(args, eval_ds, model, test_method="hard_resize", pca=None):
                 or test_method == "nearest_crop"
                 or test_method == "maj_voting"
             ):
-                inputs = torch.cat(tuple(inputs))  # shape = 5*bs x 3 x 480 x 480
+                # shape = 5*bs x 3 x 480 x 480
+                inputs = torch.cat(tuple(inputs))
             features = model(inputs.to(args.device))
             if test_method == "five_crops":  # Compute mean along the 5 crops
                 features = torch.stack(torch.split(features, 5)).mean(1)
@@ -236,7 +246,8 @@ def test(args, eval_ds, model, test_method="hard_resize", pca=None):
                 test_method == "nearest_crop" or test_method == "maj_voting"
             ):  # store the features of all 5 crops
                 start_idx = (
-                    eval_ds.database_num + (indices[0] - eval_ds.database_num) * 5
+                    eval_ds.database_num +
+                    (indices[0] - eval_ds.database_num) * 5
                 )
                 end_idx = start_idx + indices.shape[0] * 5
                 indices = np.arange(start_idx, end_idx)
@@ -244,7 +255,7 @@ def test(args, eval_ds, model, test_method="hard_resize", pca=None):
             else:
                 all_features[indices.numpy(), :] = features
 
-    queries_features = all_features[eval_ds.database_num :]
+    queries_features = all_features[eval_ds.database_num:]
     database_features = all_features[: eval_ds.database_num]
 
     faiss_index = faiss.IndexFlatL2(args.features_dim)
@@ -275,9 +286,12 @@ def test(args, eval_ds, model, test_method="hard_resize", pca=None):
         predictions = np.reshape(predictions, (eval_ds.queries_num, 5, 20))
         for q in range(eval_ds.queries_num):
             # votings, modify distances in-place
-            top_n_voting("top1", predictions[q], distances[q], args.majority_weight)
-            top_n_voting("top5", predictions[q], distances[q], args.majority_weight)
-            top_n_voting("top10", predictions[q], distances[q], args.majority_weight)
+            top_n_voting("top1", predictions[q],
+                         distances[q], args.majority_weight)
+            top_n_voting("top5", predictions[q],
+                         distances[q], args.majority_weight)
+            top_n_voting("top10", predictions[q],
+                         distances[q], args.majority_weight)
 
             # flatten dist and preds from 5, 20 -> 20*5
             # and then proceed as usual to keep only first 20
@@ -298,7 +312,7 @@ def test(args, eval_ds, model, test_method="hard_resize", pca=None):
             :, 0, :20
         ]  # keep only the closer 20 predictions for each query
 
-    #### For each query, check if the predictions are correct
+    # For each query, check if the predictions are correct
     positives_per_query = eval_ds.get_positives()
     # args.recall_values by default is [1, 5, 10, 20]
     recalls = np.zeros(len(args.recall_values))
@@ -310,7 +324,8 @@ def test(args, eval_ds, model, test_method="hard_resize", pca=None):
     # Divide by the number of queries*100, so the recalls are in percentages
     recalls = recalls / eval_ds.queries_num * 100
     recalls_str = ", ".join(
-        [f"R@{val}: {rec:.1f}" for val, rec in zip(args.recall_values, recalls)]
+        [f"R@{val}: {rec:.1f}" for val,
+            rec in zip(args.recall_values, recalls)]
     )
     return recalls, recalls_str
 

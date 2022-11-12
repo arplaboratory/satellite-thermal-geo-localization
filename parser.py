@@ -15,12 +15,12 @@ def parse_arguments():
         default='triplet',
         choices=['triplet'],
         help="Choose to use triplet or other methods"
-        )
+    )
     parser.add_argument(
         "--multi_process_mining",
-        action = "store_true",
+        action="store_true",
         help="Choose if we use multiprocessing for mining. Only work for full mining."
-        )
+    )
     parser.add_argument(
         "--train_batch_size",
         type=int,
@@ -198,7 +198,8 @@ def parse_arguments():
         help="Path to load checkpoint from, for resuming training or testing.",
     )
     # Other parameters
-    parser.add_argument("--device", type=str, default="cuda", choices=["cuda", "cpu"])
+    parser.add_argument("--device", type=str,
+                        default="cuda", choices=["cuda", "cpu"])
     parser.add_argument(
         "--num_workers", type=int, default=8, help="num_workers for all dataloaders"
     )
@@ -229,8 +230,10 @@ def parse_arguments():
         default=0.01,
         help="only for majority voting, scale factor, the higher it is the more importance is given to agreement",
     )
-    parser.add_argument("--efficient_ram_testing", action="store_true", help="_")
-    parser.add_argument("--val_positive_dist_threshold", type=int, default=100, help="_")
+    parser.add_argument("--efficient_ram_testing",
+                        action="store_true", help="_")
+    parser.add_argument("--val_positive_dist_threshold",
+                        type=int, default=100, help="_")
     parser.add_argument(
         "--train_positives_dist_threshold", type=int, default=25, help="_"
     )
@@ -246,10 +249,13 @@ def parse_arguments():
     parser.add_argument("--contrast", type=float, default=None, help="_")
     parser.add_argument("--saturation", type=float, default=None, help="_")
     parser.add_argument("--hue", type=float, default=None, help="_")
-    parser.add_argument("--rand_perspective", type=float, default=None, help="_")
+    parser.add_argument("--rand_perspective", type=float,
+                        default=None, help="_")
     parser.add_argument("--horizontal_flip", action="store_true", help="_")
-    parser.add_argument("--random_resized_crop", type=float, default=None, help="_")
-    parser.add_argument("--random_rotation", type=float, default=None, help="_")
+    parser.add_argument("--random_resized_crop",
+                        type=float, default=None, help="_")
+    parser.add_argument("--random_rotation", type=float,
+                        default=None, help="_")
     # Paths parameters
     parser.add_argument(
         "--datasets_folder", type=str, default=None, help="Path with all datasets"
@@ -320,5 +326,6 @@ def parse_arguments():
         raise ValueError("Please specify --pca_dataset_folder when using pca")
 
     if args.multi_process_mining and args.mining != 'full':
-        raise NotImplementedError("Multiprocessing mining can only be used for full mining at current stage")
+        raise NotImplementedError(
+            "Multiprocessing mining can only be used for full mining at current stage")
     return args

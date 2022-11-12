@@ -1,3 +1,11 @@
+from model.functional import sare_ind, sare_joint, info_nce_loss
+from model.sync_batchnorm import convert_model
+from model import network
+import datasets_ws
+import commons
+import parser
+import test
+import util
 import math
 import torch
 import logging
@@ -9,19 +17,12 @@ from os.path import join
 from datetime import datetime
 import torchvision.transforms as transforms
 from torch.utils.data.dataloader import DataLoader
+import time
 
 torch.backends.cudnn.benchmark = True  # Provides a speedup
 
-import util
-import test
-import parser
-import commons
-import datasets_ws
-from model import network
-from model.sync_batchnorm import convert_model
-from model.functional import sare_ind, sare_joint, info_nce_loss
 
-#### Initial setup: parser, logging...
+# Initial setup: parser, logging...
 args = parser.parse_arguments()
 start_time = datetime.now()
 args.save_dir = join(
@@ -37,8 +38,9 @@ logging.info(
     f"Using {torch.cuda.device_count()} GPUs and {multiprocessing.cpu_count()} CPUs"
 )
 
-#### Creation of Datasets
-logging.debug(f"Loading dataset {args.dataset_name} from folder {args.datasets_folder}")
+# Creation of Datasets
+logging.debug(
+    f"Loading dataset {args.dataset_name} from folder {args.datasets_folder}")
 
 train_ds = None
 if args.method == 'triplet':
@@ -51,27 +53,30 @@ elif args.method == 'simclr':
     )
 else:
     raise NotImplementedError('Unknown method is used')
-    
+
 logging.info(f"Train query set: {train_ds}")
 
-val_ds = datasets_ws.BaseDataset(args, args.datasets_folder, args.dataset_name, "val")
+val_ds = datasets_ws.BaseDataset(
+    args, args.datasets_folder, args.dataset_name, "val")
 logging.info(f"Val set: {val_ds}")
 
-test_ds = datasets_ws.BaseDataset(args, args.datasets_folder, args.dataset_name, "test")
+test_ds = datasets_ws.BaseDataset(
+    args, args.datasets_folder, args.dataset_name, "test")
 logging.info(f"Test set: {test_ds}")
 
-#### Initialize model
+# Initialize model
 model = network.GeoLocalizationNet(args)
 model = model.to(args.device)
 if args.aggregation in ["netvlad", "crn"]:  # If using NetVLAD layer, initialize it
     if not args.resume:
         train_ds.is_inference = True
-        model.aggregation.initialize_netvlad_layer(args, train_ds, model.backbone)
+        model.aggregation.initialize_netvlad_layer(
+            args, train_ds, model.backbone)
     args.features_dim *= args.netvlad_clusters
 
 model = torch.nn.DataParallel(model)
 
-#### Setup Optimizer and Loss
+# Setup Optimizer and Loss
 if args.aggregation == "crn":
     crn_params = list(model.module.aggregation.crn.parameters())
     net_params = list(model.module.backbone.parameters()) + list(
@@ -115,7 +120,8 @@ else:
         )
 
 if args.criterion == "triplet":
-    criterion_triplet = nn.TripletMarginLoss(margin=args.margin, p=2, reduction="sum")
+    criterion_triplet = nn.TripletMarginLoss(
+        margin=args.margin, p=2, reduction="sum")
 elif args.criterion == "sare_ind":
     criterion_triplet = sare_ind
 elif args.criterion == "sare_joint":
@@ -123,7 +129,7 @@ elif args.criterion == "sare_joint":
 elif args.criterion == "info_nce":
     criterion_triplet = info_nce_loss
 
-#### Resume model, optimizer, and other training parameters
+# Resume model, optimizer, and other training parameters
 if args.resume:
     if args.aggregation != "crn":
         (
@@ -158,7 +164,7 @@ if torch.cuda.device_count() >= 2:
     model = convert_model(model)
     model = model.cuda()
 
-#### Training loop
+# Training loop
 for epoch_num in range(start_epoch_num, args.epochs_num):
     logging.info(f"Start training epoch: {epoch_num:02d}")
 
@@ -188,7 +194,7 @@ for epoch_num in range(start_epoch_num, args.epochs_num):
 
         model = model.train()
 
-        # images shape: (train_batch_size*12)*3*H*W ; by default train_batch_size=4, H=512, W=640
+        # images shape: (train_batch_size*12)*3*H*W ; by default train_batch_size=4, H=512, W=512
         # triplets_local_indexes shape: (train_batch_size*10)*3 ; because 10 triplets per query
         for images, triplets_local_indexes, _ in tqdm(triplets_dl, ncols=100):
 
@@ -236,9 +242,9 @@ for epoch_num in range(start_epoch_num, args.epochs_num):
                     # triplet is a 1-D tensor with the 3 scalars indexes of the triplet
                     q_i, p_i, n_i = triplet
                     loss_triplet += criterion_triplet(
-                        features[q_i : q_i + 1],
-                        features[p_i : p_i + 1],
-                        features[n_i : n_i + 1],
+                        features[q_i: q_i + 1],
+                        features[p_i: p_i + 1],
+                        features[n_i: n_i + 1],
                     )
 
             del features
@@ -309,11 +315,12 @@ logging.info(
     f"Trained for {epoch_num+1:02d} epochs, in total in {str(datetime.now() - start_time)[:-7]}"
 )
 
-#### Test best model on test set
+# Test best model on test set
 best_model_state_dict = torch.load(join(args.save_dir, "best_model.pth"))[
     "model_state_dict"
 ]
 model.load_state_dict(best_model_state_dict)
 
-recalls, recalls_str = test.test(args, test_ds, model, test_method=args.test_method)
+recalls, recalls_str = test.test(
+    args, test_ds, model, test_method=args.test_method)
 logging.info(f"Recalls on {test_ds}: {recalls_str}")
