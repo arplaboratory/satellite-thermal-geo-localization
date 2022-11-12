@@ -17,9 +17,9 @@ def parse_arguments():
         help="Choose to use triplet or other methods"
     )
     parser.add_argument(
-        "--multi_process_mining",
+        "--use_faiss_gpu",
         action="store_true",
-        help="Choose if we use multiprocessing for mining. Only work for full mining."
+        help="Choose if we use faiss gpu version for mining. Only work for full and partial."
     )
     parser.add_argument(
         "--train_batch_size",
