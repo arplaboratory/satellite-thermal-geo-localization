@@ -12,7 +12,7 @@ import torchvision.transforms as transforms
 from torch.utils.data.dataset import Subset
 from sklearn.neighbors import NearestNeighbors
 from torch.utils.data.dataloader import DataLoader
-from multiprocessing import Pool
+from pathos.threading import ThreadPool
 import h5py
 
 base_transform = transforms.Compose(
@@ -539,31 +539,31 @@ class TripletsDataset(BaseDataset):
         subset_ds = Subset(
             self, database_indexes + list(sampled_queries_indexes + self.database_num)
         )
-        cache = self.compute_cache(
+        self.local_cache = self.compute_cache(
             args, model, subset_ds, (len(self), args.features_dim)
         )
 
         # This loop's iterations could be done individually in the __getitem__(). This way is slower but clearer (and yields same results)
         if not args.multi_process_mining:
             for query_index in tqdm(sampled_queries_indexes, ncols=100):
-                triplets = self.compute_triplets_single(args, query_index, cache)
+                triplets = self.compute_triplets_single(args, query_index)
                 self.triplets_global_indexes.append(triplets)
         else:
-            # pool = Pool(32)
+            # pool = ThreadPool(nodes=8)
             # triplets_list = []
             # for query_index in sampled_queries_indexes:
-            #     triplets_list.append(pool.apply_async(self.compute_triplets_single, (args, query_index, cache, )))
+            #     triplets_list.append(pool.apipe(self.compute_triplets_single, args, query_index))
             # for i in tqdm(range(len(sampled_queries_indexes)), ncols=100):
             #     self.triplets_global_indexes.append(triplets_list[i].get())
-            raise NotImplementedError()
+            raise NotImplementedError
             
         # self.triplets_global_indexes is a tensor of shape [1000, 12]
         self.triplets_global_indexes = torch.tensor(self.triplets_global_indexes)
         
-    def compute_triplets_single(self, args, query_index, cache):
-        query_features = self.get_query_features(query_index, cache)
+    def compute_triplets_single(self, args, query_index):
+        query_features = self.get_query_features(query_index, self.local_cache)
         best_positive_index = self.get_best_positive_index(
-            args, query_index, cache, query_features
+            args, query_index, self.local_cache, query_features
         )
         # Choose 1000 random database images (neg_indexes)
         neg_indexes = np.random.choice(
@@ -578,7 +578,7 @@ class TripletsDataset(BaseDataset):
         )
         # Search the hardest negatives
         neg_indexes = self.get_hardest_negatives_indexes(
-            args, cache, query_features, neg_indexes
+            args, self.local_cache, query_features, neg_indexes
         )
         # Update nearest negatives in neg_cache
         self.neg_cache[query_index] = neg_indexes

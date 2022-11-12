@@ -150,7 +150,6 @@ if __name__ == "__main__":
     shutil.move(os.path.join(datasets_folder, f'{args.queries_name}_{args.queries_index}_train_queries.h5'),
                              os.path.join(datasets_folder, args.database_name + '_' + str(args.database_index) + '_' + args.queries_name + '_' + str(args.queries_index), 'train_queries.h5'))
 
-    np.random.seed(0)
     create_h5_file(args, name='database', split='val')
     create_h5_file(args, name='queries', split='val')
     shutil.move(os.path.join(datasets_folder, f'{args.database_name}_{args.database_index}_val_database.h5'),
