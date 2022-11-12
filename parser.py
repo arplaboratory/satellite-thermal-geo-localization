@@ -332,5 +332,5 @@ def parse_arguments():
         raise ValueError("Please specify --pca_dataset_folder when using pca")
 
     if args.prior_position_threshold != -1 and args.prior_position_threshold <= args.val_positive_dist_threshold:
-        raise ValueError(f"Prior position theshold is too small to get enough negative samples. Set it to be more than {val_positive_dist_threshold}")
+        raise ValueError(f"Prior position theshold is too small to get enough negative samples. Set it to be at least more than {args.val_positive_dist_threshold}")
     return args
