@@ -15,13 +15,13 @@ sirmionemapping:
 thermalmapping:
   name: 20210620_west_of_rimah_thermal_mapping
   maps:
-    - 20210609_west_of_rimah_first_night_mapping_flight.tif
     - 20210620_west_of_rimah_thermal_mapping_flight1_21h22m.tif
     - 20210620_west_of_rimah_thermal_mapping_flight2_22h50m.tif
     - 20210620_west_of_rimah_thermal_mapping_flight3_00h29m.tif
     - 20210620_west_of_rimah_thermal_mapping_flight4_01h43m.tif
     - 20210620_west_of_rimah_thermal_mapping_flight5_02h45m.tif
     - 20210620_west_of_rimah_thermal_mapping_flight6_03h42m.tif
+    - 20210609_west_of_rimah_first_night_mapping_flight.tif
 foxtechmapping:
   name: 20220603_west_of_rimah_foxtech_mapping
   maps:
