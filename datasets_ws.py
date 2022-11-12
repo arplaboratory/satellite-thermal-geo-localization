@@ -389,8 +389,6 @@ class TripletsDataset(BaseDataset):
                 + "#night_indexes; [{len(night_indexes)}/{self.queries_num}]"
             )
 
-        self.ngpu = torch.cuda.device_count()
-
     def __getitem__(self, index):
         if self.is_inference:
             # At inference time return the single image. This is used for caching or computing NetVLAD's clusters
@@ -541,6 +539,15 @@ class TripletsDataset(BaseDataset):
             args, model, subset_ds, (len(self), args.features_dim)
         )
 
+        if args.use_faiss_gpu:
+            # Tmp memory for faiss
+            self.gpu_resources = []
+            for i in range(1):
+                # 2 gpu resource for positive
+                res = faiss.StandardGpuResources()
+                res.setTempMemory(200 * 1024 * 1024)  # 200 MB
+                self.gpu_resources.append(res)
+
         # This loop's iterations could be done individually in the __getitem__(). This way is slower but clearer (and yields same results)
         for query_index in tqdm(sampled_queries_indexes, ncols=100):
             query_features = self.get_query_features(query_index, cache)
@@ -562,6 +569,13 @@ class TripletsDataset(BaseDataset):
             self.triplets_global_indexes.append(
                 (query_index, best_positive_index, *neg_indexes)
             )
+
+        # Remove Tmp memory for faiss
+        if args.use_faiss_gpu:
+            del cache
+            del self.gpu_resources
+            torch.cuda.empty_cache()
+
         # self.triplets_global_indexes is a tensor of shape [1000, 12]
         self.triplets_global_indexes = torch.tensor(
             self.triplets_global_indexes)
@@ -725,179 +739,3 @@ class RAMEfficient2DMatrix:
             return np.array([self.matrix[i] for i in index])
         else:
             return self.matrix[index]
-
-
-class PairsDataset(BaseDataset):
-    """Dataset used for training, it is used to compute the pairs
-    for SimCLRDataset.
-    If is_inference == True, uses methods of the parent class BaseDataset,
-    this is used for example when computing the cache, because we compute features
-    of each image, not triplets.
-    """
-
-    def __init__(
-        self,
-        args,
-        datasets_folder="datasets",
-        dataset_name="pitts30k",
-        split="train",
-    ):
-        super().__init__(args, datasets_folder, dataset_name, split)
-        self.mining = args.mining
-        self.neg_samples_num = (
-            args.neg_samples_num
-        )  # Number of negatives to randomly sample
-        if (
-            self.mining == "full"
-        ):  # "Full database mining" keeps a cache with last used negatives
-            self.neg_cache = [
-                np.empty((0,), dtype=np.int32) for _ in range(self.queries_num)
-            ]
-        self.is_inference = False
-
-        identity_transform = transforms.Lambda(lambda x: x)
-        self.resized_transform = transforms.Compose(
-            [
-                transforms.Resize(self.resize)
-                if self.resize is not None
-                else identity_transform,
-                base_transform,
-            ]
-        )
-
-        self.query_transform = transforms.Compose(
-            [
-                transforms.ColorJitter(brightness=args.brightness)
-                if args.brightness != None
-                else identity_transform,
-                transforms.ColorJitter(contrast=args.contrast)
-                if args.contrast != None
-                else identity_transform,
-                transforms.ColorJitter(saturation=args.saturation)
-                if args.saturation != None
-                else identity_transform,
-                transforms.ColorJitter(hue=args.hue)
-                if args.hue != None
-                else identity_transform,
-                transforms.RandomPerspective(args.rand_perspective)
-                if args.rand_perspective != None
-                else identity_transform,
-                transforms.RandomResizedCrop(
-                    size=self.resize, scale=(1 - args.random_resized_crop, 1)
-                )
-                if args.random_resized_crop != None
-                else identity_transform,
-                transforms.RandomRotation(degrees=args.random_rotation)
-                if args.random_rotation != None
-                else identity_transform,
-                self.resized_transform,
-            ]
-        )
-
-        # Find hard_positives_per_query, which are within train_positives_dist_threshold (10 meters)
-        knn = NearestNeighbors(n_jobs=-1)
-        knn.fit(self.database_utms)
-        self.hard_positives_per_query = list(
-            knn.radius_neighbors(
-                self.queries_utms,
-                radius=args.train_positives_dist_threshold,  # 10 meters
-                return_distance=False,
-            )
-        )
-
-        # Some queries might have no positive, we should remove those queries.
-        queries_without_any_hard_positive = np.where(
-            np.array([len(p)
-                     for p in self.hard_positives_per_query], dtype=object) == 0
-        )[0]
-        if len(queries_without_any_hard_positive) != 0:
-            logging.info(
-                f"There are {len(queries_without_any_hard_positive)} queries without any positives "
-                + "within the training set. They won't be considered as they're useless for training."
-            )
-        # Remove queries without positives
-        self.hard_positives_per_query = np.delete(
-            self.hard_positives_per_query, queries_without_any_hard_positive
-        )
-        self.queries_paths = np.delete(
-            self.queries_paths, queries_without_any_hard_positive
-        )
-
-        # Recompute images_paths and queries_num because some queries might have been removed
-        self.images_paths = list(self.database_paths) + \
-            list(self.queries_paths)
-        self.queries_num = len(self.queries_paths)
-
-        # msls_weighted refers to the mining presented in MSLS paper's supplementary.
-        # Basically, images from uncommon domains are sampled more often. Works only with MSLS dataset.
-        if self.mining == "msls_weighted":
-            notes = [p.split("@")[-2] for p in self.queries_paths]
-            try:
-                night_indexes = np.where(
-                    np.array([n.split("_")[0] == "night" for n in notes])
-                )[0]
-                sideways_indexes = np.where(
-                    np.array([n.split("_")[1] == "sideways" for n in notes])
-                )[0]
-            except IndexError:
-                raise RuntimeError(
-                    "You're using msls_weighted mining but this dataset "
-                    + "does not have night/sideways information. Are you using Mapillary SLS?"
-                )
-            self.weights = np.ones(self.queries_num)
-            assert (
-                len(night_indexes) != 0 and len(sideways_indexes) != 0
-            ), "There should be night and sideways images for msls_weighted mining, but there are none. Are you using Mapillary SLS?"
-            self.weights[night_indexes] += self.queries_num / \
-                len(night_indexes)
-            self.weights[sideways_indexes] += self.queries_num / \
-                len(sideways_indexes)
-            self.weights /= self.weights.sum()
-            logging.info(
-                f"#sideways_indexes [{len(sideways_indexes)}/{self.queries_num}]; "
-                + "#night_indexes; [{len(night_indexes)}/{self.queries_num}]"
-            )
-
-    def __getitem__(self, index):
-        if self.is_inference:
-            # At inference time return the single image. This is used for caching or computing NetVLAD's clusters
-            return super().__getitem__(index)
-
-        # Init
-        if self.database_folder_h5_df is None:
-            self.database_folder_h5_df = h5py.File(
-                self.database_folder_h5_path, "r")
-            self.queries_folder_h5_df = h5py.File(
-                self.queries_folder_h5_path, "r")
-
-        query_index, best_positive_index, neg_indexes = torch.split(
-            self.triplets_global_indexes[index], (1,
-                                                  1, self.negs_num_per_query)
-        )
-
-        query = self.query_transform(
-            self._find_img_in_h5(query_index, "queries"))
-        positive = self.resized_transform(
-            self._find_img_in_h5(best_positive_index, "database")
-        )
-        negatives = [
-            self.resized_transform(self._find_img_in_h5(i, "database"))
-            for i in neg_indexes
-        ]
-        images = torch.stack((query, positive, *negatives), 0)
-        triplets_local_indexes = torch.empty((0, 3), dtype=torch.int)
-        for neg_num in range(len(neg_indexes)):
-            triplets_local_indexes = torch.cat(
-                (
-                    triplets_local_indexes,
-                    torch.tensor([0, 1, 2 + neg_num]).reshape(1, 3),
-                )
-            )
-        return images, triplets_local_indexes, self.triplets_global_indexes[index]
-
-    def __len__(self):
-        if self.is_inference:
-            # At inference time return the number of images. This is used for caching or computing NetVLAD's clusters
-            return super().__len__()
-        else:
-            return len(self.triplets_global_indexes)
