@@ -325,7 +325,4 @@ def parse_arguments():
     if args.pca_dim != None and args.pca_dataset_folder == None:
         raise ValueError("Please specify --pca_dataset_folder when using pca")
 
-    if args.multi_process_mining and args.mining != 'full':
-        raise NotImplementedError(
-            "Multiprocessing mining can only be used for full mining at current stage")
     return args
