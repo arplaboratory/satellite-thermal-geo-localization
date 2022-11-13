@@ -258,15 +258,48 @@ def test(args, eval_ds, model, test_method="hard_resize", pca=None):
     queries_features = all_features[eval_ds.database_num:]
     database_features = all_features[: eval_ds.database_num]
 
-    faiss_index = faiss.IndexFlatL2(args.features_dim)
+    if args.use_faiss_gpu:
+        res = faiss.StandardGpuResources()
+        faiss_index = faiss.GpuIndexFlatL2(res, args.features_dim)
+    else:
+        faiss_index = faiss.IndexFlatL2(args.features_dim)
     faiss_index.add(database_features)
     del database_features, all_features
 
     logging.debug("Calculating recalls")
-    distances, predictions = faiss_index.search(
-        queries_features, max(args.recall_values)
-    )
-
+    if args.prior_location_threshold == -1:
+        distances, predictions = faiss_index.search(
+            queries_features, max(args.recall_values)
+        )
+    else:
+        distances, predictions = [[] for i in range(len(queries_features))], [[] for i in range(len(queries_features))]
+        hard_negatives_per_query = eval_ds.get_hard_negatives()
+        for query_index in tqdm(range(len(predictions))):
+            distances_single = []
+            predictions_single = []
+            current_search = 0
+            while len(predictions_single) < max(args.recall_values):
+                current_search += max(args.recall_values) * 5
+                if current_search >= 2048: #faiss-gpu limit
+                    while len(predictions_single) < max(args.recall_values):
+                        distances_single.append(100000)
+                        predictions_single.append(-1)
+                    break
+                distances_single_call, predictions_single_call = faiss_index.search(
+                np.expand_dims(queries_features[query_index], axis=0), current_search
+                )
+                distances_single_call = distances_single_call[0][current_search - max(args.recall_values) * 5 : current_search]
+                predictions_single_call = predictions_single_call[0][current_search - max(args.recall_values) * 5 : current_search]
+                for local_index, pred in enumerate(predictions_single_call):
+                    if pred in hard_negatives_per_query[query_index]:
+                        distances_single.append(distances_single_call[local_index])
+                        predictions_single.append(predictions_single_call[local_index])
+            distances_single = np.array(distances_single[:max(args.recall_values)])
+            predictions_single = np.array(predictions_single[:max(args.recall_values)])
+            distances[query_index] = distances_single
+            predictions[query_index] = predictions_single
+        distances = np.stack(distances, axis=0)
+        predictions = np.stack(predictions, axis=0)
     if test_method == "nearest_crop":
         distances = np.reshape(distances, (eval_ds.queries_num, 20 * 5))
         predictions = np.reshape(predictions, (eval_ds.queries_num, 20 * 5))

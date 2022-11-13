@@ -255,6 +255,9 @@ class BaseDataset(data.Dataset):
     def get_positives(self):
         return self.soft_positives_per_query
 
+    def get_hard_negatives(self):
+        return self.hard_negatives_per_query
+
     def __del__(self):
         if (
             hasattr(self, "database_folder_h5_df")
@@ -581,7 +584,7 @@ class TripletsDataset(BaseDataset):
             else:
                 neg_indexes = np.setdiff1d(neg_indexes, soft_positives, assume_unique=True)
                 hard_negatives = self.hard_negatives_per_query[query_index]
-                neg_indexes = np.setdiff1d(neg_indexes, hard_negatives, assume_unique=True)[
+                neg_indexes = np.intersect1d(neg_indexes, hard_negatives, assume_unique=True)[
                     : self.negs_num_per_query
                 ]
             
@@ -643,7 +646,7 @@ class TripletsDataset(BaseDataset):
             # Remove the eventual hard_negatives from neg_indexes
             if args.prior_location_threshold != -1:
                 hard_negatives = self.hard_negatives_per_query[query_index]
-                neg_indexes = np.setdiff1d(neg_indexes, hard_negatives, assume_unique=True)
+                neg_indexes = np.intersect1d(neg_indexes, hard_negatives, assume_unique=True)
 
             # Concatenate neg_indexes with the previous top 10 negatives (neg_cache)
             neg_indexes = np.unique(
@@ -727,7 +730,7 @@ class TripletsDataset(BaseDataset):
             # Remove the eventual hard_negatives from neg_indexes
             if args.prior_location_threshold != -1:
                 hard_negatives = self.hard_negatives_per_query[query_index]
-                neg_indexes = np.setdiff1d(neg_indexes, hard_negatives, assume_unique=True)
+                neg_indexes = np.intersect1d(neg_indexes, hard_negatives, assume_unique=True)
 
             # Take all database images that are negatives and are within the sampled database images (aka database_indexes)
             neg_indexes = self.get_hardest_negatives_indexes(
