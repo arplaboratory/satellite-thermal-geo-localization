@@ -137,12 +137,12 @@ class BaseDataset(data.Dataset):
         )
 
         # Find hard_negatives_per_query. Hard negative is out of prior position threshold and we don't care
-        if args.prior_position_threshold != -1:
+        if args.prior_location_threshold != -1:
             knn = NearestNeighbors(n_jobs=-1)
             knn.fit(self.database_utms)
             self.hard_negatives_per_query = knn.radius_neighbors(
                 self.queries_utms,
-                radius=args.prior_position_threshold,
+                radius=args.prior_location_threshold,
                 return_distance=False,
             )
 
