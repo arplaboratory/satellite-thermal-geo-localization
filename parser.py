@@ -53,7 +53,7 @@ def parse_arguments():
         "--epochs_num", type=int, default=1000, help="number of epochs to train for"
     )
     parser.add_argument("--patience", type=int, default=3)
-    parser.add_argument("--lr", type=float, default=1e-4, help="_")
+    parser.add_argument("--lr", type=float, default=0.00001, help="_")
     parser.add_argument(
         "--lr_crn_layer",
         type=float,
