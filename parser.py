@@ -90,7 +90,7 @@ def parse_arguments():
     parser.add_argument(
         "--neg_samples_num",
         type=int,
-        default=10000,
+        default=1000,
         help="How many negatives to use to compute the hardest ones",
     )
     parser.add_argument(
