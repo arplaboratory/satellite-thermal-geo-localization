@@ -10,10 +10,20 @@ import yaml
 folder_config_path = './folder_config.yml'
 datasets_folder = './datasets/'
 Image.MAX_IMAGE_PIXELS = None
-valid_region_uav = [750, 550, 4600, 6600]  # top left bottom right foxtech
-valid_region_satellite = [0, 0, 9088, 23744]  # top left bottom right satellite
-queries_database_sampling = 'random'
 
+def calc_overlap(database_region, query_region):
+    valid_region = []
+    valid_region.append(max(database_region[0], query_region[0])) # top
+    valid_region.append(max(database_region[1], query_region[1])) # left
+    valid_region.append(min(database_region[2], query_region[2])) # bottom
+    valid_region.append(min(database_region[3], query_region[3])) # right
+    
+    # Check if the region is valid
+    if valid_region[2]<=valid_region[0] or valid_region[3]<=valid_region[1]:
+        raise ValueError('The area of valid region is less or equal to zero.')
+        
+    print("Get valid region: " + str(valid_region))
+    return valid_region
 
 def create_h5_file(args, name, split, sample_num):
     # Check input
@@ -41,56 +51,75 @@ def create_h5_file(args, name, split, sample_num):
         os.remove(save_path)
 
     # Check valid region
-    if 'foxtech' in args.database_name or 'foxtech' in args.queries_name:
-        valid_region = valid_region_uav
-    else:
-        valid_region = valid_region_satellite
+    database_region = folder_config[args.database_name]['valid_regions'][args.database_index]
+    queries_region = folder_config[args.queries_name]['valid_regions'][args.queries_index]
+    valid_region = calc_overlap(database_region, queries_region)
+
     # database region must be overlap with queries region
-    if not args.generate_test:
+    if args.region_num == 2:
         # train at left half and val at right half
         if split == 'train':
-            database_queries_region = [valid_region[0] + args.crop_width,
-                                    valid_region[1] + args.crop_width,
-                                    valid_region[2] - args.crop_width,
-                                    (valid_region[1] + valid_region[3])//2 - args.crop_width]  # top, left, bottom, right
+            database_queries_region = [valid_region[0] + args.crop_width//2,
+                                    valid_region[1] + args.crop_width//2,
+                                    valid_region[2] - args.crop_width//2,
+                                    (valid_region[1] + valid_region[3])//2 - args.crop_width//2]  # top, left, bottom, right
             print(f'Train region: {database_queries_region}')
         elif split == 'val':
-            database_queries_region = [valid_region[0] + args.crop_width,
-                                    (valid_region[1] + valid_region[3])//2 + args.crop_width,
-                                    valid_region[2] - args.crop_width,
-                                    valid_region[3] - args.crop_width]  # top, left, bottom, right
+            database_queries_region = [valid_region[0] + args.crop_width//2,
+                                    (valid_region[1] + valid_region[3])//2 + args.crop_width//2,
+                                    valid_region[2] - args.crop_width//2,
+                                    valid_region[3] - args.crop_width//2]  # top, left, bottom, right
             print(f'Val region: {database_queries_region}')
         else:
             raise ValueError('Generate test option is false. Please add --generate_test to generate test set.')
-    else:
+    elif args.region_num == 3:
         # train at left half and val at top-right quater and test at bottom-right quater
         if split == 'train':
-            database_queries_region = [valid_region[0] + args.crop_width,
-                                    valid_region[1] + args.crop_width,
-                                    valid_region[2] - args.crop_width,
-                                    (valid_region[1] + valid_region[3])//2 - args.crop_width]  # top, left, bottom, right
+            database_queries_region = [valid_region[0] + args.crop_width//2,
+                                    valid_region[1] + args.crop_width//2,
+                                    valid_region[2] - args.crop_width//2,
+                                    (valid_region[1] + valid_region[3])//2 - args.crop_width//2]  # top, left, bottom, right
             print(f'Train region: {database_queries_region}')
         elif split == 'val':
-            database_queries_region = [valid_region[0] + args.crop_width,
-                                    (valid_region[1] + valid_region[3])//2 + args.crop_width,
-                                    (valid_region[0] + valid_region[2])//2 - args.crop_width,
-                                    valid_region[3] - args.crop_width]  # top, left, bottom, right
+            database_queries_region = [valid_region[0] + args.crop_width//2,
+                                    (valid_region[1] + valid_region[3])//2 + args.crop_width//2,
+                                    (valid_region[0] + valid_region[2])//2 - args.crop_width//2,
+                                    valid_region[3] - args.crop_width//2]  # top, left, bottom, right
             print(f'Val region: {database_queries_region}')
         else:
-            database_queries_region = [(valid_region[0] + valid_region[2])//2 - args.crop_width,
-                                    (valid_region[1] + valid_region[3])//2 + args.crop_width,
-                                    valid_region[2] - args.crop_width,
-                                    valid_region[3] - args.crop_width]  # top, left, bottom, right
+            database_queries_region = [(valid_region[0] + valid_region[2])//2 - args.crop_width//2,
+                                    (valid_region[1] + valid_region[3])//2 + args.crop_width//2,
+                                    valid_region[2] - args.crop_width//2,
+                                    valid_region[3] - args.crop_width//2]  # top, left, bottom, right
+            print(f'Test region: {database_queries_region}')
+    else:
+        # train, val and test at the entire region
+        database_queries_region = [valid_region[0] + args.crop_width//2,
+                        valid_region[1] + args.crop_width//2,
+                        valid_region[2] - args.crop_width//2,
+                        valid_region[3] - args.crop_width//2]  # top, left, bottom, right
+        if split == 'train':
+            print(f'Train region: {database_queries_region}')
+        elif split == 'val':
+            print(f'Val region: {database_queries_region}')
+        else:
             print(f'Test region: {database_queries_region}')
     # Write h5
     with h5py.File(save_path, "a") as hf:
         start = False
         img_names = []
-        if queries_database_sampling == 'random':
+
+        if args.sample_method == 'random':
             cood_y = np.random.randint(
                 database_queries_region[0], database_queries_region[2], size=sample_num)
             cood_x = np.random.randint(
                 database_queries_region[1], database_queries_region[3], size=sample_num)
+        else:
+            cood_y = np.linspace(
+                database_queries_region[0], database_queries_region[2], size=sample_num)
+            cood_x = np.linspace(
+                database_queries_region[1], database_queries_region[3], size=sample_num)
+    
         for i in tqdm(range(len(cood_y))):
             name = f'@{cood_y[i]}@{cood_x[i]}'
             img_names.append(name)
@@ -175,7 +204,8 @@ if __name__ == "__main__":
     parser.add_argument("--train_sample_num", type=int)
     parser.add_argument("--val_sample_num", type=int)
     parser.add_argument("--compress", action="store_true")
-    parser.add_argument("--generate_test", action="store_true")
+    parser.add_argument("--region_num", type=int, default=2, choices=[1, 2, 3])
+    parser.add_argument("--sample_method", type=str, default="random", choices=["random", "grid"])
     args = parser.parse_args()
 
     if os.path.isdir(os.path.join(datasets_folder, args.database_name + '_' + str(args.database_index) + '_' + args.queries_name + '_' + str(args.queries_index))):
@@ -185,21 +215,23 @@ if __name__ == "__main__":
              str(args.database_index) + '_' + args.queries_name + '_' + str(args.queries_index)))
 
     np.random.seed(0)
-    create_h5_file(args, name='database', split='train', sample_num=args.train_sample_num)
-    create_h5_file(args, name='queries', split='train', sample_num=args.train_sample_num)
-    shutil.move(os.path.join(datasets_folder, f'{args.database_name}_{args.database_index}_train_database.h5'),
-                os.path.join(datasets_folder, args.database_name + '_' + str(args.database_index) + '_' + args.queries_name + '_' + str(args.queries_index), 'train_database.h5'))
-    shutil.move(os.path.join(datasets_folder, f'{args.queries_name}_{args.queries_index}_train_queries.h5'),
-                os.path.join(datasets_folder, args.database_name + '_' + str(args.database_index) + '_' + args.queries_name + '_' + str(args.queries_index), 'train_queries.h5'))
+    if args.region_num >= 1:
+        create_h5_file(args, name='database', split='train', sample_num=args.train_sample_num)
+        create_h5_file(args, name='queries', split='train', sample_num=args.train_sample_num)
+        shutil.move(os.path.join(datasets_folder, f'{args.database_name}_{args.database_index}_train_database.h5'),
+                    os.path.join(datasets_folder, args.database_name + '_' + str(args.database_index) + '_' + args.queries_name + '_' + str(args.queries_index), 'train_database.h5'))
+        shutil.move(os.path.join(datasets_folder, f'{args.queries_name}_{args.queries_index}_train_queries.h5'),
+                    os.path.join(datasets_folder, args.database_name + '_' + str(args.database_index) + '_' + args.queries_name + '_' + str(args.queries_index), 'train_queries.h5'))
 
-    create_h5_file(args, name='database', split='val', sample_num=args.val_sample_num)
-    create_h5_file(args, name='queries', split='val', sample_num=args.val_sample_num)
-    shutil.move(os.path.join(datasets_folder, f'{args.database_name}_{args.database_index}_val_database.h5'),
-                os.path.join(datasets_folder, args.database_name + '_' + str(args.database_index) + '_' + args.queries_name + '_' + str(args.queries_index), 'val_database.h5'))
-    shutil.move(os.path.join(datasets_folder, f'{args.queries_name}_{args.queries_index}_val_queries.h5'),
-                os.path.join(datasets_folder, args.database_name + '_' + str(args.database_index) + '_' + args.queries_name + '_' + str(args.queries_index), 'val_queries.h5'))
+    if args.region_num >= 2:
+        create_h5_file(args, name='database', split='val', sample_num=args.val_sample_num)
+        create_h5_file(args, name='queries', split='val', sample_num=args.val_sample_num)
+        shutil.move(os.path.join(datasets_folder, f'{args.database_name}_{args.database_index}_val_database.h5'),
+                    os.path.join(datasets_folder, args.database_name + '_' + str(args.database_index) + '_' + args.queries_name + '_' + str(args.queries_index), 'val_database.h5'))
+        shutil.move(os.path.join(datasets_folder, f'{args.queries_name}_{args.queries_index}_val_queries.h5'),
+                    os.path.join(datasets_folder, args.database_name + '_' + str(args.database_index) + '_' + args.queries_name + '_' + str(args.queries_index), 'val_queries.h5'))
 
-    if not args.generate_test:
+    if args.region_num <= 2:
         # Not enough test data. Use val as test
         os.symlink(os.path.abspath(os.path.join(datasets_folder, args.database_name + '_' + str(args.database_index) + '_' + args.queries_name + '_' + str(args.queries_index), 'val_database.h5')),
                 os.path.join(datasets_folder, args.database_name + '_' + str(args.database_index) + '_' + args.queries_name + '_' + str(args.queries_index), 'test_database.h5'))

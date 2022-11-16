@@ -7,6 +7,11 @@ satellite:
     - 20201117_west_of_rimah_GoogleSatellite.tif
     - 20201117_west_of_rimah_Yandex Satellite.tif
     - 20210609_west_of_rimah_first_night_mapping_flight.tif
+  valid_regions:
+    - [0, 0, 9088, 23744]
+    - [0, 0, 9088, 23744]
+    - [0, 0, 9088, 23744]
+    - [0, 0, 9088, 23744]
 sirmionemapping:
   name: 20210519_west_of_rimah_SirmioneMapping_CROP
   maps:
@@ -22,9 +27,18 @@ thermalmapping:
     - 20210620_west_of_rimah_thermal_mapping_flight5_02h45m.tif
     - 20210620_west_of_rimah_thermal_mapping_flight6_03h42m.tif
     - 20210609_west_of_rimah_first_night_mapping_flight.tif
+  valid_regions:
+    - [750, 1500, 2500, 9400]
+    - [2700, 1800, 5000, 9500]
+    - [270, 1500, 2700, 9400]
+    - [2700, 1800, 4200, 9450]
+    - [1040, 1400, 2710, 9400]
+    - [2650, 1800, 5100, 9350]
 foxtechmapping:
   name: 20220603_west_of_rimah_foxtech_mapping
   maps:
     - 20220603_west_of_rimah_foxtech_mapping_2h30pm.tif
     - 20220603_west_of_rimah_foxtech_mapping_9h00am.tif
     - 20220603_west_of_rimah_foxtech_mapping_11h30am.tif
+  valid_regions:
+    - [750, 550, 4600, 6600]
