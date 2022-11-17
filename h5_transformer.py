@@ -135,7 +135,7 @@ def create_h5_file(args, name, split, sample_num):
                         "image_data",
                         data=img_np,
                         chunks=True,
-                        maxshape=(None, None, None, 3),
+                        maxshape=(None, img_np.shape[1], img_np.shape[2], 3),
                         compression="lzf",
                     )  # write the data to hdf5 file
                     hf.create_dataset(
@@ -150,7 +150,7 @@ def create_h5_file(args, name, split, sample_num):
                         "image_data",
                         data=img_np,
                         chunks=True,
-                        maxshape=(None, None, None, 3),
+                        maxshape=(None, img_np.shape[1], img_np.shape[2], 3),
                     )  # write the data to hdf5 file
                     hf.create_dataset(
                         "image_size", data=size_np, chunks=True, maxshape=(None, 2)

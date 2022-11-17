@@ -53,126 +53,71 @@ def merge_h5_file(args, name, split, indexes):
     # Write h5
     with h5py.File(save_path, "a") as hf:
         start = False
-        for read_path_single in tqdm(read_path):
+        for read_path_single in read_path:
             with h5py.File(read_path_single, "r") as hf_single:
                 t = h5py.string_dtype(encoding="utf-8")
-                if not start:
-                    if args.compress:
-                        hf.create_dataset(
-                            "image_data",
-                            data=hf_single["image_data"],
-                            chunks=True,
-                            maxshape=(None, None, None, 3,),
-                            compression="lzf",
-                        )
-                        hf.create_dataset(
-                            "image_size",
-                            data=hf_single["image_size"],
-                            chunks=True,
-                            maxshape=(None, 2,),
-                            compression="lzf",
-                        )
-                        hf.create_dataset(
-                            "image_name",
-                            data=hf_single["image_name"],
-                            chunks=True,
-                            maxshape=(None,),
-                            compression="lzf",
-                            dtype=t
-                        )
+                for i in tqdm(range(len(hf_single["image_data"]))):
+                    img_np = np.expand_dims(hf_single["image_data"][i], axis=0)
+                    img_size = np.expand_dims(hf_single["image_size"][i], axis=0)
+                    img_name = np.expand_dims(hf_single["image_name"][i], axis=0)
+                    if not start:
+                        if args.compress:
+                            hf.create_dataset(
+                                "image_data",
+                                data=img_np,
+                                chunks=True,
+                                maxshape=(None, img_np.shape[1], img_np.shape[2], 3),
+                                compression="lzf",
+                            )
+                            hf.create_dataset(
+                                "image_size",
+                                data=img_size,
+                                chunks=True,
+                                maxshape=(None, 2),
+                                compression="lzf",
+                            )
+                            hf.create_dataset(
+                                "image_name",
+                                data=img_name,
+                                chunks=True,
+                                maxshape=(None, ),
+                                compression="lzf",
+                                dtype=t
+                            )
+                        else:
+                            hf.create_dataset(
+                                "image_data",
+                                data=img_np,
+                                chunks=True,
+                                maxshape=(None, img_np.shape[1], img_np.shape[2], 3),
+                            )
+                            hf.create_dataset(
+                                "image_size", 
+                                data=img_size, 
+                                chunks=True, 
+                                maxshape=(None, 2)
+                            )
+                            hf.create_dataset(
+                                "image_name",
+                                data=img_name,
+                                chunks=True,
+                                maxshape=(None, ),
+                                dtype=t
+                            )
+                        start = True
                     else:
-                        hf.create_dataset(
-                            "image_data",
-                            data=hf_single["image_data"],
-                            chunks=True,
-                            maxshape=(None, None, None, 3,),
+                        hf["image_data"].resize(
+                            hf["image_data"].shape[0] + img_np.shape[0], axis=0
                         )
-                        hf.create_dataset(
-                            "image_size", 
-                            data=hf_single["image_name"], 
-                            chunks=True, 
-                            maxshape=(None, 2)
+                        hf["image_data"][-img_np.shape[0]:] = img_np
+                        hf["image_size"].resize(
+                            hf["image_size"].shape[0] + img_size.shape[0], axis=0
                         )
-                        hf.create_dataset(
-                            "image_name",
-                            data=hf_single["image_size"],
-                            chunks=True,
-                            maxshape=(None,),
-                            dtype=t
+                        hf["image_size"][-img_size.shape[0]:] = hf_single["image_size"][i]
+                        hf["image_name"].resize(
+                            hf["image_name"].shape[0] + img_name.shape[0], axis=0
                         )
-                    start = True
-                else:
-                    hf["image_data"].resize(
-                        hf["image_data"].shape[0] + hf_single["image_data"].shape[0], axis=0
-                    )
-                    hf["image_data"][-hf_single["image_data"].shape[0]:] = hf_single["image_data"]
-                    hf["image_size"].resize(
-                        hf["image_size"].shape[0] + hf_single["image_size"].shape[0], axis=0
-                    )
-                    hf["image_size"][-hf_single["image_size"].shape[0]:] = hf_single["image_size"]
-                    hf["image_name"].resize(
-                        hf["image_name"].shape[0] + hf_single["image_name"].shape[0], axis=0
-                    )
-                    hf["image_name"][-hf_single["image_name"].shape[0]:] = hf_single["image_name"]
-                # for i in tqdm(range(len(hf_single["image_data"]))):
-                #     if not start:
-                #         if args.compress:
-                #             hf.create_dataset(
-                #                 "image_data",
-                #                 data=np.expand_dims(hf_single["image_data"][i], axis=0),
-                #                 chunks=True,
-                #                 maxshape=(None, None, None, 3,),
-                #                 compression="lzf",
-                #             )
-                #             hf.create_dataset(
-                #                 "image_size",
-                #                 data=np.expand_dims(hf_single["image_size"][i], axis=0),
-                #                 chunks=True,
-                #                 maxshape=(None, 2,),
-                #                 compression="lzf",
-                #             )
-                #             hf.create_dataset(
-                #                 "image_name",
-                #                 data=np.expand_dims(hf_single["image_name"][i], axis=0),
-                #                 chunks=True,
-                #                 maxshape=(None,),
-                #                 compression="lzf",
-                #                 dtype=t
-                #             )
-                #         else:
-                #             hf.create_dataset(
-                #                 "image_data",
-                #                 data=np.expand_dims(hf_single["image_data"][i], axis=0),
-                #                 chunks=True,
-                #                 maxshape=(None, None, None, 3,),
-                #             )
-                #             hf.create_dataset(
-                #                 "image_size", 
-                #                 data=np.expand_dims(hf_single["image_name"][i], axis=0), 
-                #                 chunks=True, 
-                #                 maxshape=(None, 2)
-                #             )
-                #             hf.create_dataset(
-                #                 "image_name",
-                #                 data=np.expand_dims(hf_single["image_size"][i], axis=0),
-                #                 chunks=True,
-                #                 maxshape=(None,),
-                #                 dtype=t
-                #             )
-                #         start = True
-                #     else:
-                #         hf["image_data"].resize(
-                #             hf["image_data"].shape[0] + np.expand_dims(hf_single["image_data"][i], axis=0).shape[0], axis=0
-                #         )
-                #         hf["image_data"][-hf_single["image_data"].shape[0]:] = hf_single["image_data"][i]
-                #         hf["image_size"].resize(
-                #             hf["image_size"].shape[0] + np.expand_dims(hf_single["image_size"][i], axis=0).shape[0], axis=0
-                #         )
-                #         hf["image_size"][-hf_single["image_size"].shape[0]:] = hf_single["image_size"][i]
-                #         hf["image_name"].resize(
-                #             hf["image_name"].shape[0] + np.expand_dims(hf_single["image_name"][i], axis=0).shape[0], axis=0
-                #         )
-                #         hf["image_name"][-hf_single["image_name"].shape[0]:] = hf_single["image_name"][i]
+                        hf["image_name"][-img_name.shape[0]:] = hf_single["image_name"][i]
 
         print("hdf5 file size: %d bytes" % os.path.getsize(save_path))
 
