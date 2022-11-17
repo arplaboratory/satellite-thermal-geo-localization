@@ -23,26 +23,26 @@ def merge_h5_file(args, name, split):
     queries_indexes_list = [*args.queries_indexes]
     if name == 'database':
         if args.database_name == 'satellite': # must contain satellite_i_thermalmapping_n
-            for i in queries_indexes_list:
+            for i in range(len(queries_indexes_list)):
                 read_path.append(os.path.join(
                     datasets_folder, f'{args.database_name}_{database_indexes_list[0]}_{args.queries_name}_{queries_indexes_list[i]}/{split}_database.h5'))
         elif args.database_name == 'thermalmapping':
-            for i in database_indexes_list:
+            for i in range(len(database_indexes_list)):
                 read_path.append(os.path.join(
-                    datasets_folder, f'{args.database_name}_{i}_{args.queries_name}_{i}/{split}_database.h5'))
+                    datasets_folder, f'{args.database_name}_{database_indexes_list[i]}_{args.queries_name}_{queries_indexes_list[i]}/{split}_database.h5'))
         else:
             raise NotImplementedError()
         save_path = os.path.join(
             datasets_folder, f'{args.database_name}_{args.database_indexes}_{split}_database.h5')
     else:
         if args.database_name == 'satellite': # must contain satellite_i_thermalmapping_n
-            for i in queries_indexes_list:
+            for i in range(len(queries_indexes_list)):
                 read_path.append(os.path.join(
                     datasets_folder, f'{args.database_name}_{database_indexes_list[0]}_{args.queries_name}_{queries_indexes_list[i]}/{split}_queries.h5'))
         elif args.database_name == 'thermalmapping':
-            for i in queries_indexes_list:
+            for i in range(len(queries_indexes_list)):
                 read_path.append(os.path.join(
-                    datasets_folder, f'{args.database_name}_{i}_{args.queries_name}_{i}/{split}_queries.h5'))
+                    datasets_folder, f'{args.database_name}_{database_indexes_list[i]}_{args.queries_name}_{queries_indexes_list[i]}/{split}_queries.h5'))
         else:
             raise NotImplementedError()
         save_path = os.path.join(
@@ -155,7 +155,7 @@ if __name__ == "__main__":
     parser.add_argument("--region_num", type=int, default=2, choices=[1, 2, 3])
     args = parser.parse_args()
 
-    if args.database_name == 'satellite' and len(args.database_indexes)>=1:
+    if args.database_name == 'satellite' and len(args.database_indexes) > 1:
         raise ValueError("When creating satellite-thermal dataset, you can only choose 1 satellite map")
     elif len(args.database_indexes) < 1 or len(args.queries_indexes) < 1:
         raise ValueError("Indexes must contain more than 1 index")
