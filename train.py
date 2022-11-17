@@ -183,6 +183,10 @@ for epoch_num in range(start_epoch_num, args.epochs_num):
             train_ds.is_inference = False
         else:
             raise NotImplementedError()
+
+        if args.use_faiss_gpu:
+            torch.cuda.empty_cache()
+
         triplets_dl = DataLoader(
             dataset=train_ds,
             num_workers=args.num_workers,
