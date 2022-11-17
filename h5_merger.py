@@ -10,7 +10,7 @@ import yaml
 folder_config_path = './folder_config.yml'
 datasets_folder = './datasets/'
 
-def merge_h5_file(args, name, split, indexes):
+def merge_h5_file(args, name, split):
     # Check input
     if not name in ['database', 'queries']:
         raise NotImplementedError('Name must be database or queries')
@@ -18,34 +18,35 @@ def merge_h5_file(args, name, split, indexes):
         raise NotImplementedError('Split must be train or val or test')
 
     # Check h5 names
+    read_path = []
+    database_indexes_list = [*args.database_indexes]
+    queries_indexes_list = [*args.queries_indexes]
     if name == 'database':
-        read_path = []
-        indexes_list = [*indexes]
-        for i in indexes_list:
-            if args.database_name == 'satellite':
+        if args.database_name == 'satellite': # must contain satellite_i_thermalmapping_n
+            for i in queries_indexes_list:
                 read_path.append(os.path.join(
-                    datasets_folder, f'{args.database_name}_{i}_{args.queries_name}_{indexes[0]}/{split}_database.h5'))
-            elif args.database_name == 'thermalmapping':
+                    datasets_folder, f'{args.database_name}_{database_indexes_list[0]}_{args.queries_name}_{queries_indexes_list[i]}/{split}_database.h5'))
+        elif args.database_name == 'thermalmapping':
+            for i in database_indexes_list:
                 read_path.append(os.path.join(
                     datasets_folder, f'{args.database_name}_{i}_{args.queries_name}_{i}/{split}_database.h5'))
-            else:
-                raise NotImplementedError()
+        else:
+            raise NotImplementedError()
         save_path = os.path.join(
-            datasets_folder, f'{args.database_name}_{indexes}_{split}_database.h5')
+            datasets_folder, f'{args.database_name}_{args.database_indexes}_{split}_database.h5')
     else:
-        read_path = []
-        indexes_list = [*indexes]
-        for i in indexes_list:
-            if args.database_name == 'satellite':
+        if args.database_name == 'satellite': # must contain satellite_i_thermalmapping_n
+            for i in queries_indexes_list:
                 read_path.append(os.path.join(
-                    datasets_folder, f'{args.database_name}_{indexes[0]}_{args.queries_name}_{i}/{split}_queries.h5'))
-            elif args.database_name == 'thermalmapping':
+                    datasets_folder, f'{args.database_name}_{database_indexes_list[0]}_{args.queries_name}_{queries_indexes_list[i]}/{split}_queries.h5'))
+        elif args.database_name == 'thermalmapping':
+            for i in queries_indexes_list:
                 read_path.append(os.path.join(
                     datasets_folder, f'{args.database_name}_{i}_{args.queries_name}_{i}/{split}_queries.h5'))
-            else:
-                raise NotImplementedError()
+        else:
+            raise NotImplementedError()
         save_path = os.path.join(
-            datasets_folder, f'{args.queries_name}_{indexes}_{split}_queries.h5')
+            datasets_folder, f'{args.queries_name}_{args.queries_indexes}_{split}_queries.h5')
 
     if os.path.isfile(save_path):
         os.remove(save_path)
@@ -154,21 +155,26 @@ if __name__ == "__main__":
     parser.add_argument("--region_num", type=int, default=2, choices=[1, 2, 3])
     args = parser.parse_args()
 
+    if args.database_name == 'satellite' and len(args.database_indexes)>=1:
+        raise ValueError("When creating satellite-thermal dataset, you can only choose 1 satellite map")
+    elif len(args.database_indexes) < 1 or len(args.queries_indexes) < 1:
+        raise ValueError("Indexes must contain more than 1 index")
+
     if os.path.isdir(os.path.join(datasets_folder, args.database_name + '_' + args.database_indexes + '_' + args.queries_name + '_' + args.queries_indexes)):
         shutil.rmtree(os.path.join(datasets_folder, args.database_name + '_' + args.database_indexes + '_' + args.queries_name + '_' + args.queries_indexes))
     os.mkdir(os.path.join(datasets_folder, args.database_name + '_' + args.database_indexes + '_' + args.queries_name + '_' + args.queries_indexes))
 
     if args.region_num >= 1:
-        merge_h5_file(args, name='database', split='train', indexes=args.database_indexes)
-        merge_h5_file(args, name='queries', split='train', indexes=args.queries_indexes)
+        merge_h5_file(args, name='database', split='train')
+        merge_h5_file(args, name='queries', split='train')
         shutil.move(os.path.join(datasets_folder, f'{args.database_name}_{args.database_indexes}_train_database.h5'),
                     os.path.join(datasets_folder, args.database_name + '_' + str(args.database_indexes) + '_' + args.queries_name + '_' + str(args.queries_indexes), 'train_database.h5'))
         shutil.move(os.path.join(datasets_folder, f'{args.queries_name}_{args.queries_indexes}_train_queries.h5'),
                     os.path.join(datasets_folder, args.database_name + '_' + str(args.database_indexes) + '_' + args.queries_name + '_' + str(args.queries_indexes), 'train_queries.h5'))
 
     if args.region_num >= 2:
-        merge_h5_file(args, name='database', split='val', indexes=args.database_indexes)
-        merge_h5_file(args, name='queries', split='val', indexes=args.queries_indexes)
+        merge_h5_file(args, name='database', split='val')
+        merge_h5_file(args, name='queries', split='val')
         shutil.move(os.path.join(datasets_folder, f'{args.database_name}_{args.database_indexes}_val_database.h5'),
                     os.path.join(datasets_folder, args.database_name + '_' + str(args.database_indexes) + '_' + args.queries_name + '_' + str(args.queries_indexes), 'val_database.h5'))
         shutil.move(os.path.join(datasets_folder, f'{args.queries_name}_{args.queries_indexes}_val_queries.h5'),
@@ -181,8 +187,8 @@ if __name__ == "__main__":
         os.symlink(os.path.abspath(os.path.join(datasets_folder, args.database_name + '_' + str(args.database_indexes) + '_' + args.queries_name + '_' + str(args.queries_indexes), 'val_queries.h5')),
                 os.path.join(datasets_folder, args.database_name + '_' + str(args.database_indexes) + '_' + args.queries_name + '_' + str(args.queries_indexes), 'test_queries.h5'))
     else:
-        merge_h5_file(args, name='database', split='test', indexes=args.database_indexes)
-        merge_h5_file(args, name='queries', split='test', indexes=args.queries_indexes)
+        merge_h5_file(args, name='database', split='test')
+        merge_h5_file(args, name='queries', split='test')
         shutil.move(os.path.join(datasets_folder, f'{args.database_name}_{args.database_indexes}_test_database.h5'),
                     os.path.join(datasets_folder, args.database_name + '_' + str(args.database_indexes) + '_' + args.queries_name + '_' + str(args.queries_indexes), 'test_database.h5'))
         shutil.move(os.path.join(datasets_folder, f'{args.queries_name}_{args.queries_indexes}_test_queries.h5'),
