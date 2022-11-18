@@ -259,6 +259,7 @@ def test(args, eval_ds, model, test_method="hard_resize", pca=None):
     database_features = all_features[: eval_ds.database_num]
 
     if args.use_faiss_gpu:
+        torch.cuda.empty_cache()
         res = faiss.StandardGpuResources()
         faiss_index = faiss.GpuIndexFlatL2(res, args.features_dim)
     else:
