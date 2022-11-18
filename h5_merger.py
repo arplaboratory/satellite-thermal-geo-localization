@@ -22,7 +22,7 @@ def merge_h5_file(args, name, split):
     database_indexes_list = [*args.database_indexes]
     queries_indexes_list = [*args.queries_indexes]
     if name == 'database':
-        if args.database_name == 'satellite': # must contain satellite_i_thermalmapping_n
+        if args.database_name == 'satellite' or args.database_name == 'foxtechmapping': # must contain satellite_i_thermalmapping_n
             for i in range(len(queries_indexes_list)):
                 read_path.append(os.path.join(
                     datasets_folder, f'{args.database_name}_{database_indexes_list[0]}_{args.queries_name}_{queries_indexes_list[i]}/{split}_database.h5'))
@@ -35,7 +35,7 @@ def merge_h5_file(args, name, split):
         save_path = os.path.join(
             datasets_folder, f'{args.database_name}_{args.database_indexes}_{split}_database.h5')
     else:
-        if args.database_name == 'satellite': # must contain satellite_i_thermalmapping_n
+        if args.database_name == 'satellite' or args.database_name == 'foxtechmapping': # must contain satellite_i_thermalmapping_n
             for i in range(len(queries_indexes_list)):
                 read_path.append(os.path.join(
                     datasets_folder, f'{args.database_name}_{database_indexes_list[0]}_{args.queries_name}_{queries_indexes_list[i]}/{split}_queries.h5'))
