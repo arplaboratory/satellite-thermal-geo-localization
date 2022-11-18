@@ -6,6 +6,7 @@ from PIL import Image
 import argparse
 from tqdm import tqdm
 import yaml
+from glob import glob
 
 folder_config_path = './folder_config.yml'
 datasets_folder = './datasets/'
@@ -158,9 +159,14 @@ if __name__ == "__main__":
     elif len(args.database_indexes) < 1 or len(args.queries_indexes) < 1:
         raise ValueError("Indexes must contain more than 1 index")
 
-    if os.path.isdir(os.path.join(datasets_folder, args.database_name + '_' + args.database_indexes + '_' + args.queries_name + '_' + args.queries_indexes)):
-        shutil.rmtree(os.path.join(datasets_folder, args.database_name + '_' + args.database_indexes + '_' + args.queries_name + '_' + args.queries_indexes))
-    os.mkdir(os.path.join(datasets_folder, args.database_name + '_' + args.database_indexes + '_' + args.queries_name + '_' + args.queries_indexes))
+    if os.path.isdir(os.path.join(datasets_folder, args.database_name + '_' + str(args.database_indexes) + '_' + args.queries_name + '_' + str(args.queries_indexes))):
+        rmpaths = glob(os.path.join(datasets_folder, args.database_name + '_' + str(
+            args.database_indexes) + '_' + args.queries_name + '_' + str(args.queries_indexes), '*'))
+        for rmpath in rmpaths:
+            os.remove(rmpath)
+    else:
+        os.mkdir(os.path.join(datasets_folder, args.database_name + '_' +
+                str(args.database_indexes) + '_' + args.queries_name + '_' + str(args.queries_indexes)))
 
     if args.region_num >= 1:
         merge_h5_file(args, name='database', split='train')
