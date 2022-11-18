@@ -6,6 +6,7 @@ from PIL import Image
 import argparse
 from tqdm import tqdm
 import yaml
+from glob import glob
 
 folder_config_path = './folder_config.yml'
 datasets_folder = './datasets/'
@@ -40,13 +41,11 @@ def create_h5_file(args, name, split, sample_num):
     if name == 'database':
         image = np.array(Image.open(os.path.join(
             datasets_folder, folder_config[args.database_name]['name'], folder_config[args.database_name]['maps'][args.database_index])).convert('RGB'))
-        save_path = os.path.join(
-            datasets_folder, f'{args.database_name}_{args.database_index}_{split}_database.h5')
+        save_path = os.path.join(datasets_folder, args.database_name + '_' + str(args.database_index) + '_' + args.queries_name + '_' + str(args.queries_index), f'{split}_database.h5')
     else:
         image = np.array(Image.open(os.path.join(
             datasets_folder, folder_config[args.queries_name]['name'], folder_config[args.queries_name]['maps'][args.queries_index])).convert('RGB'))
-        save_path = os.path.join(
-            datasets_folder, f'{args.queries_name}_{args.queries_index}_{split}_queries.h5')
+        save_path = os.path.join(datasets_folder, args.database_name + '_' + str(args.database_index) + '_' + args.queries_name + '_' + str(args.queries_index), f'{split}_queries.h5') 
     if os.path.isfile(save_path):
         os.remove(save_path)
 
@@ -123,7 +122,6 @@ def create_h5_file(args, name, split, sample_num):
         for i in tqdm(range(len(cood_y))):
             name = f'@{cood_y[i]}@{cood_x[i]}'
             img_names.append(name)
-
             img_np = image[cood_y[i]-args.crop_width//2: cood_y[i]+args.crop_width //
                            2, cood_x[i]-args.crop_width//2: cood_x[i]+args.crop_width//2, :]
             img_np = np.expand_dims(img_np, axis=0)
@@ -134,8 +132,8 @@ def create_h5_file(args, name, split, sample_num):
                     hf.create_dataset(
                         "image_data",
                         data=img_np,
-                        chunks=True,
-                        maxshape=(None, img_np.shape[1], img_np.shape[2], 3),
+                        chunks=(1, 512, 512, 3),
+                        maxshape=(None, 512, 512, 3),
                         compression="lzf",
                     )  # write the data to hdf5 file
                     hf.create_dataset(
@@ -149,8 +147,8 @@ def create_h5_file(args, name, split, sample_num):
                     hf.create_dataset(
                         "image_data",
                         data=img_np,
-                        chunks=True,
-                        maxshape=(None, img_np.shape[1], img_np.shape[2], 3),
+                        chunks=(1, 512, 512, 3),
+                        maxshape=(None, 512, 512, 3),
                     )  # write the data to hdf5 file
                     hf.create_dataset(
                         "image_size", data=size_np, chunks=True, maxshape=(None, 2)
@@ -209,27 +207,22 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if os.path.isdir(os.path.join(datasets_folder, args.database_name + '_' + str(args.database_index) + '_' + args.queries_name + '_' + str(args.queries_index))):
-        shutil.rmtree(os.path.join(datasets_folder, args.database_name + '_' + str(
-            args.database_index) + '_' + args.queries_name + '_' + str(args.queries_index)))
-    os.mkdir(os.path.join(datasets_folder, args.database_name + '_' +
-             str(args.database_index) + '_' + args.queries_name + '_' + str(args.queries_index)))
+        rmpaths = glob(os.path.join(datasets_folder, args.database_name + '_' + str(
+            args.database_index) + '_' + args.queries_name + '_' + str(args.queries_index), '*'))
+        for rmpath in rmpaths:
+            os.remove(rmpath)
+    else:
+        os.mkdir(os.path.join(datasets_folder, args.database_name + '_' +
+                str(args.database_index) + '_' + args.queries_name + '_' + str(args.queries_index)))
 
     np.random.seed(0)
     if args.region_num >= 1:
         create_h5_file(args, name='database', split='train', sample_num=args.train_sample_num)
         create_h5_file(args, name='queries', split='train', sample_num=args.train_sample_num)
-        shutil.move(os.path.join(datasets_folder, f'{args.database_name}_{args.database_index}_train_database.h5'),
-                    os.path.join(datasets_folder, args.database_name + '_' + str(args.database_index) + '_' + args.queries_name + '_' + str(args.queries_index), 'train_database.h5'))
-        shutil.move(os.path.join(datasets_folder, f'{args.queries_name}_{args.queries_index}_train_queries.h5'),
-                    os.path.join(datasets_folder, args.database_name + '_' + str(args.database_index) + '_' + args.queries_name + '_' + str(args.queries_index), 'train_queries.h5'))
 
     if args.region_num >= 2:
         create_h5_file(args, name='database', split='val', sample_num=args.val_sample_num)
         create_h5_file(args, name='queries', split='val', sample_num=args.val_sample_num)
-        shutil.move(os.path.join(datasets_folder, f'{args.database_name}_{args.database_index}_val_database.h5'),
-                    os.path.join(datasets_folder, args.database_name + '_' + str(args.database_index) + '_' + args.queries_name + '_' + str(args.queries_index), 'val_database.h5'))
-        shutil.move(os.path.join(datasets_folder, f'{args.queries_name}_{args.queries_index}_val_queries.h5'),
-                    os.path.join(datasets_folder, args.database_name + '_' + str(args.database_index) + '_' + args.queries_name + '_' + str(args.queries_index), 'val_queries.h5'))
 
     if args.region_num <= 2:
         # Not enough test data. Use val as test
@@ -240,7 +233,3 @@ if __name__ == "__main__":
     else:
         create_h5_file(args, name='database', split='test', sample_num=args.val_sample_num)
         create_h5_file(args, name='queries', split='test', sample_num=args.val_sample_num)
-        shutil.move(os.path.join(datasets_folder, f'{args.database_name}_{args.database_index}_test_database.h5'),
-                    os.path.join(datasets_folder, args.database_name + '_' + str(args.database_index) + '_' + args.queries_name + '_' + str(args.queries_index), 'test_database.h5'))
-        shutil.move(os.path.join(datasets_folder, f'{args.queries_name}_{args.queries_index}_test_queries.h5'),
-                    os.path.join(datasets_folder, args.database_name + '_' + str(args.database_index) + '_' + args.queries_name + '_' + str(args.queries_index), 'test_queries.h5'))

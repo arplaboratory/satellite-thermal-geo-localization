@@ -32,8 +32,7 @@ def merge_h5_file(args, name, split):
                     datasets_folder, f'{args.database_name}_{database_indexes_list[i]}_{args.queries_name}_{queries_indexes_list[i]}/{split}_database.h5'))
         else:
             raise NotImplementedError()
-        save_path = os.path.join(
-            datasets_folder, f'{args.database_name}_{args.database_indexes}_{split}_database.h5')
+        save_path = os.path.join(datasets_folder, args.database_name + '_' + str(args.database_indexes) + '_' + args.queries_name + '_' + str(args.queries_indexes), f'{split}_database.h5')
     else:
         if args.database_name == 'satellite' or args.database_name == 'foxtechmapping': # must contain satellite_i_thermalmapping_n
             for i in range(len(queries_indexes_list)):
@@ -45,8 +44,7 @@ def merge_h5_file(args, name, split):
                     datasets_folder, f'{args.database_name}_{database_indexes_list[i]}_{args.queries_name}_{queries_indexes_list[i]}/{split}_queries.h5'))
         else:
             raise NotImplementedError()
-        save_path = os.path.join(
-            datasets_folder, f'{args.queries_name}_{args.queries_indexes}_{split}_queries.h5')
+        save_path = os.path.join(datasets_folder, args.database_name + '_' + str(args.database_indexes) + '_' + args.queries_name + '_' + str(args.queries_indexes), f'{split}_queries.h5')
 
     if os.path.isfile(save_path):
         os.remove(save_path)
@@ -66,8 +64,8 @@ def merge_h5_file(args, name, split):
                             hf.create_dataset(
                                 "image_data",
                                 data=img_np,
-                                chunks=True,
-                                maxshape=(None, img_np.shape[1], img_np.shape[2], 3),
+                                chunks=(1, 512, 512, 3),
+                                maxshape=(None, 512, 512, 3),
                                 compression="lzf",
                             )
                             hf.create_dataset(
@@ -89,8 +87,8 @@ def merge_h5_file(args, name, split):
                             hf.create_dataset(
                                 "image_data",
                                 data=img_np,
-                                chunks=True,
-                                maxshape=(None, img_np.shape[1], img_np.shape[2], 3),
+                                chunks=(1, 512, 512, 3),
+                                maxshape=(None, 512, 512, 3),
                             )
                             hf.create_dataset(
                                 "image_size", 
@@ -167,18 +165,10 @@ if __name__ == "__main__":
     if args.region_num >= 1:
         merge_h5_file(args, name='database', split='train')
         merge_h5_file(args, name='queries', split='train')
-        shutil.move(os.path.join(datasets_folder, f'{args.database_name}_{args.database_indexes}_train_database.h5'),
-                    os.path.join(datasets_folder, args.database_name + '_' + str(args.database_indexes) + '_' + args.queries_name + '_' + str(args.queries_indexes), 'train_database.h5'))
-        shutil.move(os.path.join(datasets_folder, f'{args.queries_name}_{args.queries_indexes}_train_queries.h5'),
-                    os.path.join(datasets_folder, args.database_name + '_' + str(args.database_indexes) + '_' + args.queries_name + '_' + str(args.queries_indexes), 'train_queries.h5'))
 
     if args.region_num >= 2:
         merge_h5_file(args, name='database', split='val')
         merge_h5_file(args, name='queries', split='val')
-        shutil.move(os.path.join(datasets_folder, f'{args.database_name}_{args.database_indexes}_val_database.h5'),
-                    os.path.join(datasets_folder, args.database_name + '_' + str(args.database_indexes) + '_' + args.queries_name + '_' + str(args.queries_indexes), 'val_database.h5'))
-        shutil.move(os.path.join(datasets_folder, f'{args.queries_name}_{args.queries_indexes}_val_queries.h5'),
-                    os.path.join(datasets_folder, args.database_name + '_' + str(args.database_indexes) + '_' + args.queries_name + '_' + str(args.queries_indexes), 'val_queries.h5'))
 
     if args.region_num <= 2:
         # Not enough test data. Use val as test
@@ -189,7 +179,3 @@ if __name__ == "__main__":
     else:
         merge_h5_file(args, name='database', split='test')
         merge_h5_file(args, name='queries', split='test')
-        shutil.move(os.path.join(datasets_folder, f'{args.database_name}_{args.database_indexes}_test_database.h5'),
-                    os.path.join(datasets_folder, args.database_name + '_' + str(args.database_indexes) + '_' + args.queries_name + '_' + str(args.queries_indexes), 'test_database.h5'))
-        shutil.move(os.path.join(datasets_folder, f'{args.queries_name}_{args.queries_indexes}_test_queries.h5'),
-                    os.path.join(datasets_folder, args.database_name + '_' + str(args.database_indexes) + '_' + args.queries_name + '_' + str(args.queries_indexes), 'test_queries.h5'))
