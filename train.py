@@ -196,6 +196,7 @@ for epoch_num in range(start_epoch_num, args.epochs_num):
             drop_last=True,
         )
 
+        torch.cuda.empty_cache()
         model = model.train()
 
         # images shape: (train_batch_size*12)*3*H*W ; by default train_batch_size=4, H=512, W=512
