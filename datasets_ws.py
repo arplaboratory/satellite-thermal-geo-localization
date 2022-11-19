@@ -471,8 +471,8 @@ class TripletsDataset(BaseDataset):
         # RAMEfficient2DMatrix can be replaced by np.zeros, but using
         # RAMEfficient2DMatrix is RAM efficient for full database mining.
         if args.use_faiss_gpu:
-            # cache = torch.zeros(cache_shape).to(args.device)
-            cache = MultiGPUTensor(cache_shape)
+            cache = torch.zeros(cache_shape).to(args.device)
+            # cache = MultiGPUTensor(cache_shape)
         else:
             cache = RAMEfficient2DMatrix(cache_shape, dtype=np.float32)
         
