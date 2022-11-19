@@ -471,7 +471,8 @@ class TripletsDataset(BaseDataset):
         # RAMEfficient2DMatrix can be replaced by np.zeros, but using
         # RAMEfficient2DMatrix is RAM efficient for full database mining.
         if args.use_faiss_gpu:
-            cache = torch.zeros(cache_shape).to(args.device)
+            # cache = torch.zeros(cache_shape).to(args.device)
+            cache = MultiGPUTensor(cache_shape)
         else:
             cache = RAMEfficient2DMatrix(cache_shape, dtype=np.float32)
         
@@ -555,7 +556,7 @@ class TripletsDataset(BaseDataset):
         if args.use_faiss_gpu:
             # Tmp memory for faiss
             self.gpu_resources = []
-            for i in range(1):
+            for i in range(2):
                 # 2 gpu resource for positive
                 res = faiss.StandardGpuResources()
                 res.setTempMemory(200 * 1024 * 1024)  # 200 MB
@@ -772,3 +773,61 @@ class RAMEfficient2DMatrix:
             return np.array([self.matrix[i] for i in index])
         else:
             return self.matrix[index]
+
+class MultiGPUTensor:
+    """This class behaves similarly to a numpy.ndarray initialized
+    with np.zeros(), but is implemented to save RAM when the rows
+    within the 2D array are sparse. In this case it's needed because
+    we don't always compute features for each image, just for few of
+    them"""
+
+    def __init__(self, shape, dtype=torch.float32):
+        self.shape = shape
+        self.dtype = dtype
+        self.gpu_nums = torch.cuda.device_count()
+        self.interval = shape[0]//self.gpu_nums
+        last = divmod(shape[0], self.gpu_nums)
+        self.matrix_list = []
+        if last[1] > 0:
+            for i in range(self.gpu_nums - 1):
+                self.matrix_list.append(torch.zeros((self.interval, shape[1])).to(f"cuda:{i}"))
+            self.matrix_list.append(torch.zeros((self.interval + last, shape[1])).to(f"cuda:{self.gpu_nums - 1}"))
+        else:
+            for i in range(self.gpu_nums):
+                self.matrix_list.append(torch.zeros((self.interval, shape[1])).to(f"cuda:{i}"))
+        
+
+    def __setitem__(self, indexes, vals):
+        assert vals.shape[1] == self.shape[1], f"{vals.shape[1]} {self.shape[1]}"
+        for i, val in zip(indexes, vals):
+            int_i = int(i)
+            belong_gpu = int_i // self.interval
+            if belong_gpu >= self.gpu_nums:
+                # last
+                belong_gpu -= 1
+                self.matrix_list[belong_gpu][divmod(int_i, self.interval)[1] + self.interval, :] = val.type(self.dtype)
+            else:
+                self.matrix_list[belong_gpu][divmod(int_i, self.interval)[1], :] = val.type(self.dtype)
+
+    def __getitem__(self, index):
+        if hasattr(index, "__len__"):
+            tensor_list = []
+            for i in index:
+                int_i = int(i)
+                belong_gpu = int_i // self.interval
+                if belong_gpu >= self.gpu_nums:
+                    # last
+                    belong_gpu -= 1
+                    tensor_list.append(self.matrix_list[belong_gpu][divmod(int_i, self.interval)[1] + self.interval, :].to('cuda:0'))
+                else:
+                    tensor_list.append(self.matrix_list[belong_gpu][divmod(int_i, self.interval)[1], :].to('cuda:0'))
+            return torch.stack(tensor_list, axis=0)
+        else:
+            int_i = int(index)
+            belong_gpu = int_i // self.interval
+            if belong_gpu >= self.gpu_nums:
+                # last
+                belong_gpu -= 1
+                return self.matrix_list[belong_gpu][divmod(int_i, self.interval)[1] + self.interval]
+            else:
+                return self.matrix_list[belong_gpu][divmod(int_i, self.interval)[1]]
