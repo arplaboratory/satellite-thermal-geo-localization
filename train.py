@@ -269,7 +269,9 @@ for epoch_num in range(start_epoch_num, args.epochs_num):
             + f"current batch triplet loss = {batch_loss:.4f}, "
             + f"average epoch triplet loss = {epoch_losses.mean():.4f}"
         )
-
+    
+    del triplets_dl
+    
     logging.info(
         f"Finished epoch {epoch_num:02d} in {str(datetime.now() - epoch_start_time)[:-7]}, "
         f"average epoch triplet loss = {epoch_losses.mean():.4f}"
