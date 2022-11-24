@@ -115,9 +115,9 @@ def create_h5_file(args, name, split, sample_num):
                 database_queries_region[1], database_queries_region[3], size=sample_num)
         elif args.sample_method == 'grid':
             cood_y_only = np.linspace(
-                database_queries_region[0], database_queries_region[2], size=sample_num)
+                database_queries_region[0], database_queries_region[2], size=round(np.sqrt(sample_num)))
             cood_x_only = np.linspace(
-                database_queries_region[1], database_queries_region[3], size=sample_num)
+                database_queries_region[1], database_queries_region[3], size=round(np.sqrt(sample_num)))
             cood_x, cood_y = np.meshgrid(cood_x_only, cood_y_only)
             cood_y = cood_y.flatten()
             cood_x = cood_x.flatten()
