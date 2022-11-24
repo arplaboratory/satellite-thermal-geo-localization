@@ -119,13 +119,14 @@ def create_h5_file(args, name, split, sample_num):
             cood_x = np.linspace(
                 database_queries_region[1], database_queries_region[3], size=sample_num)
         elif args.sample_method == 'stride':
+            print("Warning: Stride sampling overrides sample num. You may get less samples.")
             cood_y = np.arange(
                 database_queries_region[0], database_queries_region[2], step=args.stride)
             cood_x = np.arange(
                 database_queries_region[1], database_queries_region[3], step=args.stride)
         else:
             raise NotImplementedError()
-            
+
         for i in tqdm(range(len(cood_y))):
             name = f'@{cood_y[i]}@{cood_x[i]}'
             img_names.append(name)
@@ -206,12 +207,12 @@ if __name__ == "__main__":
         help="The index of queries flight you want to use. For satellite map, it is forced to be 0"
     )
     parser.add_argument("--crop_width", type=int, default=512)
-    parser.add_argument("--train_sample_num", type=int)
-    parser.add_argument("--val_sample_num", type=int)
+    parser.add_argument("--train_sample_num", type=int, default=10000)
+    parser.add_argument("--val_sample_num", type=int, default=10000)
     parser.add_argument("--compress", action="store_true")
     parser.add_argument("--region_num", type=int, default=2, choices=[1, 2, 3])
     parser.add_argument("--sample_method", type=str, default="random", choices=["random", "grid", "stride"])
-    parser.add_argument("--stride", type=int, default=75)
+    parser.add_argument("--stride", type=int, default=25)
     args = parser.parse_args()
 
     if os.path.isdir(os.path.join(datasets_folder, args.database_name + '_' + str(args.database_index) + '_' + args.queries_name + '_' + str(args.queries_index))):
