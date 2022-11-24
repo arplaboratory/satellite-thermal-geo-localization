@@ -114,16 +114,22 @@ def create_h5_file(args, name, split, sample_num):
             cood_x = np.random.randint(
                 database_queries_region[1], database_queries_region[3], size=sample_num)
         elif args.sample_method == 'grid':
-            cood_y = np.linspace(
+            cood_y_only = np.linspace(
                 database_queries_region[0], database_queries_region[2], size=sample_num)
-            cood_x = np.linspace(
+            cood_x_only = np.linspace(
                 database_queries_region[1], database_queries_region[3], size=sample_num)
+            cood_x, cood_y = np.meshgrid(cood_x_only, cood_y_only)
+            cood_y = cood_y.flatten()
+            cood_x = cood_x.flatten()
         elif args.sample_method == 'stride':
             print("Warning: Stride sampling overrides sample num. You may get less samples.")
-            cood_y = np.arange(
+            cood_y_only = np.arange(
                 database_queries_region[0], database_queries_region[2], step=args.stride)
-            cood_x = np.arange(
+            cood_x_only = np.arange(
                 database_queries_region[1], database_queries_region[3], step=args.stride)
+            cood_x, cood_y = np.meshgrid(cood_x_only, cood_y_only)
+            cood_y = cood_y.flatten()
+            cood_x = cood_x.flatten()
         else:
             raise NotImplementedError()
 
