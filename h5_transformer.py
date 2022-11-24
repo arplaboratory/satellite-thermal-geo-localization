@@ -218,7 +218,7 @@ if __name__ == "__main__":
     parser.add_argument("--compress", action="store_true")
     parser.add_argument("--region_num", type=int, default=2, choices=[1, 2, 3])
     parser.add_argument("--sample_method", type=str, default="random", choices=["random", "grid", "stride"])
-    parser.add_argument("--stride", type=int, default=25)
+    parser.add_argument("--stride", type=int, default=35)
     args = parser.parse_args()
 
     if os.path.isdir(os.path.join(datasets_folder, args.database_name + '_' + str(args.database_index) + '_' + args.queries_name + '_' + str(args.queries_index))):

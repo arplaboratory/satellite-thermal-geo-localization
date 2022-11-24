@@ -241,7 +241,7 @@ def parse_arguments():
     parser.add_argument("--val_positive_dist_threshold",
                         type=int, default=50, help="_")
     parser.add_argument(
-        "--train_positives_dist_threshold", type=int, default=20, help="_"
+        "--train_positives_dist_threshold", type=int, default=35, help="_"
     )
     parser.add_argument(
         "--recall_values",
@@ -333,4 +333,5 @@ def parse_arguments():
 
     if args.prior_location_threshold != -1 and args.prior_location_threshold <= args.val_positive_dist_threshold:
         raise ValueError(f"Prior position theshold is too small to get enough negative samples. Set it to be at least more than {args.val_positive_dist_threshold}")
+
     return args
