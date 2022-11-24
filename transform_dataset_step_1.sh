@@ -1,6 +1,6 @@
 #!/bin/bash
 eval "$(conda shell.bash hook)"
-conda activate VPR_SSL
+conda activate VTL
 
 # bing + foxtech
 python h5_transformer.py --database_name satellite --database_index 0 --queries_name foxtechmapping --queries_index 0 --compress --train_sample_num 10000 --val_sample_num 10000 --region_num 2 &

@@ -1,6 +1,6 @@
 #!/bin/bash
 eval "$(conda shell.bash hook)"
-conda activate VPR_SSL
+conda activate VTL
 
 # bing + thermal_123456
 python h5_merger.py --database_name satellite --database_indexes 0 --queries_name thermalmapping --queries_indexes 012345 --compress --region_num 2 &
