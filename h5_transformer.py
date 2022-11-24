@@ -122,7 +122,7 @@ def create_h5_file(args, name, split, sample_num):
             cood_y = cood_y.flatten()
             cood_x = cood_x.flatten()
         elif args.sample_method == 'stride':
-            print("Warning: Stride sampling overrides sample num. You may get less samples.")
+            print("Warning: Stride sampling overrides sample num. You may get less or more samples.")
             cood_y_only = np.arange(
                 database_queries_region[0], database_queries_region[2], step=args.stride)
             cood_x_only = np.arange(
