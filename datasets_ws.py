@@ -594,9 +594,9 @@ class TripletsDataset(BaseDataset):
                 (query_index, best_positive_index, *neg_indexes)
             )
 
+        del cache
         # Remove Tmp memory for faiss
         if args.use_faiss_gpu:
-            del cache
             del self.gpu_resources
             torch.cuda.empty_cache()
 
@@ -664,8 +664,8 @@ class TripletsDataset(BaseDataset):
             self.triplets_global_indexes.append((query_index, best_positive_index, *neg_indexes))
 
         # Remove Tmp memory for faiss
+        del cache
         if args.use_faiss_gpu:
-            del cache
             del self.gpu_resources
             torch.cuda.empty_cache()
 
@@ -745,8 +745,8 @@ class TripletsDataset(BaseDataset):
             )
 
         # Remove Tmp memory for faiss
+        del cache
         if args.use_faiss_gpu:
-            del cache
             del self.gpu_resources
             torch.cuda.empty_cache()
 
