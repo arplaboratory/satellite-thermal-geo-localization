@@ -1,6 +1,0 @@
-#!/bin/bash
-
-eval "$(conda shell.bash hook)"
-conda activate VTL
-
-python3 train.py --dataset_name=foxtechmapping_0_thermalmapping_012345 --mining=partial --datasets_folder=datasets --infer_batch_size 128 --train_batch_size 10 --lr 0.0001
