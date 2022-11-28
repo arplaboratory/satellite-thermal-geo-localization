@@ -5,7 +5,7 @@ import numpy as np
 from tqdm import tqdm
 from torch.utils.data import DataLoader
 from torch.utils.data.dataset import Subset
-
+from utils.plotting import save_heatmap_simulation, process_results_simulation
 
 def test_efficient_ram_usage(args, eval_ds, model, test_method="hard_resize"):
     """This function gives the same output as test(), but uses much less RAM.
@@ -361,6 +361,35 @@ def test(args, eval_ds, model, test_method="hard_resize", pca=None):
         [f"R@{val}: {rec:.1f}" for val,
             rec in zip(args.recall_values, recalls)]
     )
+
+    if args.use_best_n > 0:
+        samples_to_be_used = args.use_best_n
+        error_m = []
+        for query_index in range(len(predictions)):
+            distance = distances[query_index]
+            prediction = predictions[query_index]
+            sort_idx = np.argsort(distance)
+            if distance[sort_idx[0]] == 0:
+                print('match')
+                best_position = eval_ds.database_utms[prediction[sort_idx[0]]]
+            else:
+                mean = distance[sort_idx[0]]
+                sigma = distance[sort_idx[0]] / distance[sort_idx[-1]]
+                X = np.array(distance[sort_idx[:samples_to_be_used]]).reshape((-1,))
+                weights = np.exp(-np.square(X - mean) / (2 * sigma ** 2))  # gauss
+                weights = weights / np.sum(weights)
+
+                x = y = 0
+                for p, w in zip(eval_ds.database_utms[prediction[sort_idx[:samples_to_be_used]]], weights.tolist()):
+                    y += p[0] * w
+                    x += p[1] * w
+                best_position = (y, x)
+            actual_position = eval_ds.queries_utms[query_index]
+            error = np.linalg.norm((actual_position[0]-best_position[0], actual_position[1]-best_position[1]))
+            error_m.append(error)
+        process_results_simulation(error_m, args.save_dir)
+        # save_heatmap_simulation()
+            
     return recalls, recalls_str
 
 

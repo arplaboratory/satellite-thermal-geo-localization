@@ -28,6 +28,12 @@ def parse_arguments():
         help="The threshold of search region from prior knowledge for train and test. If -1, then no prior knowledge"
     )
     parser.add_argument(
+        "--use_best_n",
+        type=int,
+        default=4,
+        help="Calculate the position from weighted averaged best n. If n = 1, then it is equivalent to top 1"
+    )
+    parser.add_argument(
         "--train_batch_size",
         type=int,
         default=4,
@@ -334,4 +340,7 @@ def parse_arguments():
     if args.prior_location_threshold != -1 and args.prior_location_threshold <= args.val_positive_dist_threshold:
         raise ValueError(f"Prior position theshold is too small to get enough negative samples. Set it to be at least more than {args.val_positive_dist_threshold}")
 
+    if args.use_best_n < 0:
+        raise ValueError("use_best_n must be large than or equal to 0")
+    
     return args
