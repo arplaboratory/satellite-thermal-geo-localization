@@ -1,4 +1,4 @@
-from model.functional import sare_ind, sare_joint, info_nce_loss
+from model.functional import sare_ind, sare_joint
 from model.sync_batchnorm import convert_model
 from model import network
 import datasets_ws
@@ -17,7 +17,6 @@ from os.path import join
 from datetime import datetime
 import torchvision.transforms as transforms
 from torch.utils.data.dataloader import DataLoader
-import time
 
 torch.backends.cudnn.benchmark = True  # Provides a speedup
 
@@ -43,16 +42,9 @@ logging.debug(
     f"Loading dataset {args.dataset_name} from folder {args.datasets_folder}")
 
 train_ds = None
-if args.method == 'triplet':
-    train_ds = datasets_ws.TripletsDataset(
-        args, args.datasets_folder, args.dataset_name, "train", args.negs_num_per_query
-    )
-elif args.method == 'simclr':
-    train_ds = datasets_ws.PairsDataset(
-        args, args.datasets_folder, args.dataset_name, "train"
-    )
-else:
-    raise NotImplementedError('Unknown method is used')
+train_ds = datasets_ws.TripletsDataset(
+    args, args.datasets_folder, args.dataset_name, "train", args.negs_num_per_query
+)
 
 logging.info(f"Train query set: {train_ds}")
 
@@ -126,8 +118,6 @@ elif args.criterion == "sare_ind":
     criterion_triplet = sare_ind
 elif args.criterion == "sare_joint":
     criterion_triplet = sare_joint
-elif args.criterion == "info_nce":
-    criterion_triplet = info_nce_loss
 
 # Resume model, optimizer, and other training parameters
 if args.resume:
@@ -177,12 +167,9 @@ for epoch_num in range(start_epoch_num, args.epochs_num):
         logging.debug(f"Cache: {loop_num} / {loops_num}")
 
         # Compute triplets to use in the triplet loss
-        if args.method == "triplet":
-            train_ds.is_inference = True
-            train_ds.compute_triplets(args, model)
-            train_ds.is_inference = False
-        else:
-            raise NotImplementedError()
+        train_ds.is_inference = True
+        train_ds.compute_triplets(args, model)
+        train_ds.is_inference = False
 
         if args.use_faiss_gpu:
             torch.cuda.empty_cache()
