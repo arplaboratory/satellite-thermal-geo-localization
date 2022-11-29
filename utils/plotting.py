@@ -52,18 +52,18 @@ def process_results_simulation(error_m, save_folder):
     plt.ylabel("No. occurences")
     plt.savefig(os.path.join(save_folder, 'hist_error_localization.pdf'))
 
-def save_heatmap_simulation(res, basemap_img_path, config, save_folder):
-    basemap_img = cv2.imread(basemap_img_path)
-    basemap_img = basemap_img[config["TL"][1]:config["BR"][1], config["TL"][0]:config["BR"][0], :]
+def save_heatmap_simulation(pos, err, database_image_path, config, save_folder):
+    basemap_img = cv2.imread(database_image_path)
+    basemap_img = basemap_img[config[0]:config[2], config[1]:config[3], :]
 
-    for r in res:
-        gt, bm, err, pt, conf_lvl, = r
-        for sample_idx in range(len(gt)):
-            if err[sample_idx] < 50:
-                cv2.circle(basemap_img, (gt[sample_idx][0], gt[sample_idx][1]), 9, green, 2)
-            elif err[sample_idx] < 100:
-                cv2.circle(basemap_img, (gt[sample_idx][0], gt[sample_idx][1]), 9, cyan, 2)
-            else:
-                cv2.circle(basemap_img, (gt[sample_idx][0], gt[sample_idx][1]), 9, red, 2)
+    for i in range(len(pos)):
+        pos_single = list(map(int, pos[i]))
+        err_single = err[i]
+        if err_single < 50:
+            cv2.circle(basemap_img, (pos_single[1] - config[1], pos_single[0] - config[0]), 9, green, 2)
+        elif err_single < 100:
+            cv2.circle(basemap_img, (pos_single[1] - config[1], pos_single[0] - config[0]), 9, cyan, 2)
+        else:
+            cv2.circle(basemap_img, (pos_single[1] - config[1], pos_single[0] - config[0]), 9, red, 2)
 
-    cv2.imwrite(os.path.normpath(save_folder), basemap_img.astype(np.float32))
+    cv2.imwrite(os.path.join(save_folder, "heatmap.png"), basemap_img)

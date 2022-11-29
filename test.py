@@ -6,6 +6,9 @@ from tqdm import tqdm
 from torch.utils.data import DataLoader
 from torch.utils.data.dataset import Subset
 from utils.plotting import save_heatmap_simulation, process_results_simulation
+from h5_transformer import calc_overlap
+import yaml
+import os
 
 def test_efficient_ram_usage(args, eval_ds, model, test_method="hard_resize"):
     """This function gives the same output as test(), but uses much less RAM.
@@ -365,12 +368,12 @@ def test(args, eval_ds, model, test_method="hard_resize", pca=None):
     if args.use_best_n > 0:
         samples_to_be_used = args.use_best_n
         error_m = []
+        position_m = []
         for query_index in range(len(predictions)):
             distance = distances[query_index]
             prediction = predictions[query_index]
             sort_idx = np.argsort(distance)
             if distance[sort_idx[0]] == 0:
-                print('match')
                 best_position = eval_ds.database_utms[prediction[sort_idx[0]]]
             else:
                 mean = distance[sort_idx[0]]
@@ -387,8 +390,22 @@ def test(args, eval_ds, model, test_method="hard_resize", pca=None):
             actual_position = eval_ds.queries_utms[query_index]
             error = np.linalg.norm((actual_position[0]-best_position[0], actual_position[1]-best_position[1]))
             error_m.append(error)
+            position_m.append(actual_position)
         process_results_simulation(error_m, args.save_dir)
-        # save_heatmap_simulation()
+        dataset_name_list = args.dataset_name.split('_')
+        database_name = dataset_name_list[0]
+        database_index = int(dataset_name_list[1])
+        queries_name = dataset_name_list[2]
+        queries_index = int(dataset_name_list[3])
+        folder_config_path = './folder_config.yml'
+        with open(folder_config_path, 'r') as f:
+            folder_config = yaml.safe_load(f)
+        database_image_path = os.path.join(args.datasets_folder, folder_config[database_name]['name'],
+                                            folder_config[database_name]['maps'][database_index])
+        database_region = folder_config[database_name]['valid_regions'][database_index]
+        queries_region = folder_config[queries_name]['valid_regions'][queries_index]
+        valid_region = calc_overlap(database_region, queries_region)
+        save_heatmap_simulation(position_m, error_m, database_image_path, valid_region, args.save_dir)
             
     return recalls, recalls_str
 
