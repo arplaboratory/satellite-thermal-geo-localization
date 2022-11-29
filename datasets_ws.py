@@ -446,44 +446,86 @@ class TripletsDataset(BaseDataset):
         else:
             return len(self.triplets_global_indexes)
 
-    def compute_triplets(self, args, model):
+    def compute_triplets(self, args, model, model_db=None):
         self.is_inference = True
         if self.mining == "full":
-            self.compute_triplets_full(args, model)
+            self.compute_triplets_full(args, model, model_db)
         elif self.mining == "partial" or self.mining == "msls_weighted":
-            self.compute_triplets_partial(args, model)
+            self.compute_triplets_partial(args, model, model_db)
         elif self.mining == "random":
-            self.compute_triplets_random(args, model)
+            self.compute_triplets_random(args, model, model_db)
 
     @staticmethod
-    def compute_cache(args, model, subset_ds, cache_shape):
+    def compute_cache(args, model, model_db, subset_ds, cache_shape, database_num):
         """Compute the cache containing features of images, which is used to
         find best positive and hardest negatives."""
-        subset_dl = DataLoader(
-            dataset=subset_ds,
-            num_workers=args.num_workers,
-            batch_size=args.infer_batch_size,
-            shuffle=False,
-            pin_memory=(args.device == "cuda"),
-        )
-        model = model.eval()
+        if model_db is not None:
+            subset_db_dl = DataLoader(
+                dataset=subset_ds[0],
+                num_workers=args.num_workers,
+                batch_size=args.infer_batch_size,
+                shuffle=False,
+                pin_memory=(args.device == "cuda"),
+            )
+            subset_qr_dl = DataLoader(
+                dataset=subset_ds[1],
+                num_workers=args.num_workers,
+                batch_size=args.infer_batch_size,
+                shuffle=False,
+                pin_memory=(args.device == "cuda"),
+            )
+            model = model.eval()
+            model_db = model_db.eval()
 
-        # RAMEfficient2DMatrix can be replaced by np.zeros, but using
-        # RAMEfficient2DMatrix is RAM efficient for full database mining.
-        if args.use_faiss_gpu:
-            cache = torch.zeros(cache_shape).to(args.device)
-            # cache = MultiGPUTensor(cache_shape)
+            # RAMEfficient2DMatrix can be replaced by np.zeros, but using
+            # RAMEfficient2DMatrix is RAM efficient for full database mining.
+            if args.use_faiss_gpu:
+                cache = torch.zeros(cache_shape).to(args.device)
+                # cache = MultiGPUTensor(cache_shape)
+            else:
+                cache = RAMEfficient2DMatrix(cache_shape, dtype=np.float32)
+            
+            with torch.no_grad():
+                for images, indexes in tqdm(subset_db_dl, ncols=100):
+                    images = images.to(args.device)
+                    features = model_db(images)
+                    if args.use_faiss_gpu:
+                        cache[indexes] = features
+                    else:
+                        cache[indexes.numpy()] = features.cpu().numpy()
+                for images, indexes in tqdm(subset_qr_dl, ncols=100):
+                    images = images.to(args.device)
+                    features = model(images)
+                    if args.use_faiss_gpu:
+                        cache[indexes + database_num] = features
+                    else:
+                        cache[indexes.numpy() + database_num] = features.cpu().numpy()
         else:
-            cache = RAMEfficient2DMatrix(cache_shape, dtype=np.float32)
-        
-        with torch.no_grad():
-            for images, indexes in tqdm(subset_dl, ncols=100):
-                images = images.to(args.device)
-                features = model(images)
-                if args.use_faiss_gpu:
-                    cache[indexes] = features
-                else:
-                    cache[indexes.numpy()] = features.cpu().numpy()
+            subset_dl = DataLoader(
+                dataset=subset_ds,
+                num_workers=args.num_workers,
+                batch_size=args.infer_batch_size,
+                shuffle=False,
+                pin_memory=(args.device == "cuda"),
+            )
+            model = model.eval()
+
+            # RAMEfficient2DMatrix can be replaced by np.zeros, but using
+            # RAMEfficient2DMatrix is RAM efficient for full database mining.
+            if args.use_faiss_gpu:
+                cache = torch.zeros(cache_shape).to(args.device)
+                # cache = MultiGPUTensor(cache_shape)
+            else:
+                cache = RAMEfficient2DMatrix(cache_shape, dtype=np.float32)
+            
+            with torch.no_grad():
+                for images, indexes in tqdm(subset_dl, ncols=100):
+                    images = images.to(args.device)
+                    features = model(images)
+                    if args.use_faiss_gpu:
+                        cache[indexes] = features
+                    else:
+                        cache[indexes.numpy()] = features.cpu().numpy()
         return cache
 
     def get_query_features(self, query_index, cache):
@@ -529,7 +571,7 @@ class TripletsDataset(BaseDataset):
         neg_indexes = neg_samples[neg_nums].astype(np.int32)
         return neg_indexes
 
-    def compute_triplets_random(self, args, model):
+    def compute_triplets_random(self, args, model, model_db):
         self.triplets_global_indexes = []
         # Take 1000 random queries
         sampled_queries_indexes = np.random.choice(
@@ -545,14 +587,25 @@ class TripletsDataset(BaseDataset):
         positives_indexes = list(np.unique(positives_indexes))
 
         # Compute the cache only for queries and their positives, in order to find the best positive
-        subset_ds = Subset(
-            self, positives_indexes +
-            list(sampled_queries_indexes + self.database_num)
-        )
-        cache = self.compute_cache(
-            args, model, subset_ds, (len(self), args.features_dim)
-        )
-
+        if model_db is not None:
+            subset_db_ds = Subset(
+                self, positives_indexes
+            )
+            subset_qr_ds = Subset(
+                self, list(sampled_queries_indexes + self.database_num)
+            )
+            cache = self.compute_cache(
+                args, model, model_db, [subset_db_ds, subset_qr_ds], (len(self), args.features_dim), self.database_num
+            )
+        else:
+            subset_ds = Subset(
+                self, positives_indexes +
+                list(sampled_queries_indexes + self.database_num)
+            )
+            cache = self.compute_cache(
+                args, model, model_db, subset_ds, (len(self), args.features_dim), self.database_num
+            )
+        
         if args.use_faiss_gpu:
             # Tmp memory for faiss
             torch.cuda.empty_cache()
@@ -604,7 +657,7 @@ class TripletsDataset(BaseDataset):
         self.triplets_global_indexes = torch.tensor(
             self.triplets_global_indexes)
 
-    def compute_triplets_full(self, args, model):
+    def compute_triplets_full(self, args, model, model_db):
         self.triplets_global_indexes = []
         # Take 1000 random queries
         sampled_queries_indexes = np.random.choice(
@@ -612,14 +665,25 @@ class TripletsDataset(BaseDataset):
         )
         # Take all database indexes
         database_indexes = list(range(self.database_num))
-        #  Compute features for all images and store them in cache
-        subset_ds = Subset(
-            self, database_indexes +
-            list(sampled_queries_indexes + self.database_num)
-        )
-        cache = self.compute_cache(
-            args, model, subset_ds, (len(self), args.features_dim)
-        )
+        # Compute features for all images and store them in cache
+        if model_db is not None:
+            subset_db_ds = Subset(
+                self, database_indexes
+            )
+            subset_qr_ds = Subset(
+                self, list(sampled_queries_indexes + self.database_num)
+            )
+            cache = self.compute_cache(
+                args, model, model_db, [subset_db_ds, subset_qr_ds], (len(self), args.features_dim), self.database_num
+            )
+        else:
+            subset_ds = Subset(
+                self, database_indexes +
+                list(sampled_queries_indexes + self.database_num)
+            )
+            cache = self.compute_cache(
+                args, model, model_db, subset_ds, (len(self), args.features_dim), self.database_num
+            )
 
         if args.use_faiss_gpu:
             # Tmp memory for faiss
@@ -673,7 +737,7 @@ class TripletsDataset(BaseDataset):
         self.triplets_global_indexes = torch.tensor(
             self.triplets_global_indexes)
 
-    def compute_triplets_partial(self, args, model):
+    def compute_triplets_partial(self, args, model, model_db):
         self.triplets_global_indexes = []
         # Take 1000 random queries
         if self.mining == "partial":
@@ -700,13 +764,24 @@ class TripletsDataset(BaseDataset):
         database_indexes = list(sampled_database_indexes) + positives_indexes
         database_indexes = list(np.unique(database_indexes))
 
-        subset_ds = Subset(
-            self, database_indexes +
-            list(sampled_queries_indexes + self.database_num)
-        )
-        cache = self.compute_cache(
-            args, model, subset_ds, cache_shape=(len(self), args.features_dim)
-        )
+        if model_db is not None:
+            subset_db_ds = Subset(
+                self, database_indexes
+            )
+            subset_qr_ds = Subset(
+                self, list(sampled_queries_indexes + self.database_num)
+            )
+            cache = self.compute_cache(
+                args, model, model_db, [subset_db_ds, subset_qr_ds], (len(self), args.features_dim), self.database_num
+            )
+        else:
+            subset_ds = Subset(
+                self, database_indexes +
+                list(sampled_queries_indexes + self.database_num)
+            )
+            cache = self.compute_cache(
+                args, model, model_db, subset_ds, (len(self), args.features_dim), self.database_num
+            )
 
         if args.use_faiss_gpu:
             # Tmp memory for faiss

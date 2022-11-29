@@ -168,7 +168,7 @@ def test_efficient_ram_usage(args, eval_ds, model, test_method="hard_resize"):
     return recalls, recalls_str
 
 
-def test(args, eval_ds, model, test_method="hard_resize", pca=None):
+def test(args, eval_ds, model, model_db=None, test_method="hard_resize", pca=None):
     """Compute features of the given dataset and compute the recalls."""
 
     assert test_method in [
@@ -184,6 +184,8 @@ def test(args, eval_ds, model, test_method="hard_resize", pca=None):
         return test_efficient_ram_usage(args, eval_ds, model, test_method)
 
     model = model.eval()
+    if model_db is not None:
+        model_db = model_db.eval()
     with torch.no_grad():
         logging.debug("Extracting database features for evaluation/testing")
         # For database use "hard_resize", although it usually has no effect because database images have same resolution
@@ -206,7 +208,10 @@ def test(args, eval_ds, model, test_method="hard_resize", pca=None):
                 (len(eval_ds), args.features_dim), dtype="float32")
 
         for inputs, indices in tqdm(database_dataloader, ncols=100):
-            features = model(inputs.to(args.device))
+            if model_db is not None:
+                features = model_db(inputs.to(args.device))
+            else:
+                features = model(inputs.to(args.device))
             features = features.cpu().numpy()
             if pca != None:
                 features = pca.transform(features)

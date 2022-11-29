@@ -87,7 +87,7 @@ if args.aggregation == "crn":
         net_db_params = list(model_db.module.backbone.parameters()) + list(
         [
             m[1]
-            for m in model.module.aggregation.named_parameters()
+            for m in model_db.module.aggregation.named_parameters()
             if not m[0].startswith("crn")
         ]
     )
@@ -184,7 +184,7 @@ if args.resume:
                 best_r5,
                 start_epoch_num,
                 not_improved_num,
-            ) = util.resume_train_separate(args, model, optimizer)
+            ) = util.resume_train_separate(args, model, model_db, optimizer)
         else:
             (
                 model,
@@ -198,7 +198,7 @@ if args.resume:
         # does not load the optimizer from the checkpoint file.
         if args.separate_branch:
             model, _, best_r5, start_epoch_num, not_improved_num = util.resume_train_separate(
-            args, model, strict=False
+            args, model, model_db, strict=False
         )
         else:
             model, _, best_r5, start_epoch_num, not_improved_num = util.resume_train(
@@ -216,7 +216,6 @@ else:
     logging.info(
         f"Output dimension of the model is {args.features_dim}, with {util.get_flops(model, args.resize)}"
     )
-
 
 if torch.cuda.device_count() >= 2:
     # When using more than 1GPU, use sync_batchnorm for torch.nn.DataParallel
@@ -364,6 +363,7 @@ for epoch_num in range(start_epoch_num, args.epochs_num):
         {
             "epoch_num": epoch_num,
             "model_state_dict": model.state_dict(),
+            "model_db_state_dict": model_db.state_dict() if model_db is not None else None,
             "optimizer_state_dict": optimizer.state_dict(),
             "recalls": recalls,
             "best_r5": best_r5,
@@ -402,7 +402,12 @@ best_model_state_dict = torch.load(join(args.save_dir, "best_model.pth"))[
     "model_state_dict"
 ]
 model.load_state_dict(best_model_state_dict)
+if args.separate_path:
+    best_model_db_state_dict = torch.load(join(args.save_dir, "best_model.pth"))[
+        "model_db_state_dict"
+    ]
+    model_db.load_state_dict(best_model_db_state_dict)
 
 recalls, recalls_str = test.test(
-    args, test_ds, model, test_method=args.test_method)
+    args, test_ds, model, model_db, test_method=args.test_method)
 logging.info(f"Recalls on {test_ds}: {recalls_str}")
