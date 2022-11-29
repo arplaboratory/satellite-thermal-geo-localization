@@ -10,6 +10,13 @@ def parse_arguments():
     )
     # Training parameters
     parser.add_argument(
+        "--method",
+        type=str,
+        default='triplet',
+        choices=['triplet'],
+        help="Choose to use triplet or other methods"
+    )
+    parser.add_argument(
         "--use_faiss_gpu",
         action="store_true",
         help="Choose if we use faiss gpu version for mining. Only work for full and partial."
