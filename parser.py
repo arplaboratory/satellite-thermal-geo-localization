@@ -27,6 +27,11 @@ def parse_arguments():
         help="Calculate the position from weighted averaged best n. If n = 1, then it is equivalent to top 1"
     )
     parser.add_argument(
+        "--separate_branch",
+        action="store_true",
+        help="Have two separate branches"
+    )
+    parser.add_argument(
         "--train_batch_size",
         type=int,
         default=4,
@@ -336,4 +341,6 @@ def parse_arguments():
     if args.use_best_n < 0:
         raise ValueError("use_best_n must be large than or equal to 0")
     
+    if args.separate_branch and args.criterion in ["sare_joint", "sare_ind"]:
+        raise ValueError("separate_branch currently only supports triplet loss")
     return args

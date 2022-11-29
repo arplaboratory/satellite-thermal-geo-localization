@@ -17,6 +17,7 @@ from os.path import join
 from datetime import datetime
 import torchvision.transforms as transforms
 from torch.utils.data.dataloader import DataLoader
+import copy
 
 torch.backends.cudnn.benchmark = True  # Provides a speedup
 
@@ -66,6 +67,10 @@ if args.aggregation in ["netvlad", "crn"]:  # If using NetVLAD layer, initialize
             args, train_ds, model.backbone)
     args.features_dim *= args.netvlad_clusters
 
+if args.separate_branch:
+    model_db = copy.deepcopy(model)
+    model_db = torch.nn.DataParallel(model_db)
+
 model = torch.nn.DataParallel(model)
 
 # Setup Optimizer and Loss
@@ -78,38 +83,87 @@ if args.aggregation == "crn":
             if not m[0].startswith("crn")
         ]
     )
+    if args.separate_branch:
+        net_db_params = list(model_db.module.backbone.parameters()) + list(
+        [
+            m[1]
+            for m in model.module.aggregation.named_parameters()
+            if not m[0].startswith("crn")
+        ]
+    )
     if args.optim == "adam":
-        optimizer = torch.optim.Adam(
-            [
-                {"params": crn_params, "lr": args.lr_crn_layer},
-                {"params": net_params, "lr": args.lr_crn_net},
-            ]
-        )
+        if args.separate_branch:
+            optimizer = torch.optim.Adam(
+                [
+                    {"params": crn_params, "lr": args.lr_crn_layer},
+                    {"params": net_params, "lr": args.lr_crn_net},
+                    {"params": net_db_params, "lr": args.lr_crn_net},
+                ]
+            )
+        else:
+            optimizer = torch.optim.Adam(
+                [
+                    {"params": crn_params, "lr": args.lr_crn_layer},
+                    {"params": net_params, "lr": args.lr_crn_net},
+                ]
+            )
         logging.info("You're using CRN with Adam, it is advised to use SGD")
     elif args.optim == "sgd":
-        optimizer = torch.optim.SGD(
-            [
-                {
-                    "params": crn_params,
-                    "lr": args.lr_crn_layer,
-                    "momentum": 0.9,
-                    "weight_decay": 0.001,
-                },
-                {
-                    "params": net_params,
-                    "lr": args.lr_crn_net,
-                    "momentum": 0.9,
-                    "weight_decay": 0.001,
-                },
-            ]
-        )
+        if args.separate_branch:
+            optimizer = torch.optim.SGD(
+                [
+                    {
+                        "params": crn_params,
+                        "lr": args.lr_crn_layer,
+                        "momentum": 0.9,
+                        "weight_decay": 0.001,
+                    },
+                    {
+                        "params": net_params,
+                        "lr": args.lr_crn_net,
+                        "momentum": 0.9,
+                        "weight_decay": 0.001,
+                    },
+                    {
+                        "params": net_db_params,
+                        "lr": args.lr_crn_net,
+                        "momentum": 0.9,
+                        "weight_decay": 0.001,
+                    },
+                ]
+            )
+        else:
+            optimizer = torch.optim.SGD(
+                [
+                    {
+                        "params": crn_params,
+                        "lr": args.lr_crn_layer,
+                        "momentum": 0.9,
+                        "weight_decay": 0.001,
+                    },
+                    {
+                        "params": net_params,
+                        "lr": args.lr_crn_net,
+                        "momentum": 0.9,
+                        "weight_decay": 0.001,
+                    },
+                ]
+            )
 else:
     if args.optim == "adam":
-        optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
+        if args.separate_branch:
+            optimizer = torch.optim.Adam(list(model.parameters()) + list(model_db.parameters()), lr=args.lr)
+        else:
+            optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
     elif args.optim == "sgd":
-        optimizer = torch.optim.SGD(
-            model.parameters(), lr=args.lr, momentum=0.9, weight_decay=0.001
-        )
+        if args.separate_branch:
+            optimizer = torch.optim.SGD(
+                list(model.parameters()) + list(model_db.parameters()), lr=args.lr, momentum=0.9, weight_decay=0.001
+            )
+        else:
+            optimizer = torch.optim.SGD(
+                model.parameters(), lr=args.lr, momentum=0.9, weight_decay=0.001
+            )
 
 if args.criterion == "triplet":
     criterion_triplet = nn.TripletMarginLoss(
@@ -122,17 +176,32 @@ elif args.criterion == "sare_joint":
 # Resume model, optimizer, and other training parameters
 if args.resume:
     if args.aggregation != "crn":
-        (
-            model,
-            optimizer,
-            best_r5,
-            start_epoch_num,
-            not_improved_num,
-        ) = util.resume_train(args, model, optimizer)
+        if args.separate_branch:
+            (
+                model,
+                model_db,
+                optimizer,
+                best_r5,
+                start_epoch_num,
+                not_improved_num,
+            ) = util.resume_train_separate(args, model, optimizer)
+        else:
+            (
+                model,
+                optimizer,
+                best_r5,
+                start_epoch_num,
+                not_improved_num,
+            ) = util.resume_train(args, model, optimizer)
     else:
         # CRN uses pretrained NetVLAD, then requires loading with strict=False and
         # does not load the optimizer from the checkpoint file.
-        model, _, best_r5, start_epoch_num, not_improved_num = util.resume_train(
+        if args.separate_branch:
+            model, _, best_r5, start_epoch_num, not_improved_num = util.resume_train_separate(
+            args, model, strict=False
+        )
+        else:
+            model, _, best_r5, start_epoch_num, not_improved_num = util.resume_train(
             args, model, strict=False
         )
     logging.info(
@@ -153,6 +222,9 @@ if torch.cuda.device_count() >= 2:
     # When using more than 1GPU, use sync_batchnorm for torch.nn.DataParallel
     model = convert_model(model)
     model = model.cuda()
+    if args.separate_branch:
+        model_db = convert_model(model_db)
+        model_db = model_db.cuda()
 
 # Training loop
 for epoch_num in range(start_epoch_num, args.epochs_num):
@@ -185,6 +257,8 @@ for epoch_num in range(start_epoch_num, args.epochs_num):
 
         torch.cuda.empty_cache()
         model = model.train()
+        if args.separate_branch:
+            model_db = model_db.train()
 
         # images shape: (train_batch_size*12)*3*H*W ; by default train_batch_size=4, H=512, W=512
         # triplets_local_indexes shape: (train_batch_size*10)*3 ; because 10 triplets per query
@@ -195,7 +269,21 @@ for epoch_num in range(start_epoch_num, args.epochs_num):
                 images = transforms.RandomHorizontalFlip()(images)
 
             # Compute features of all images (images contains queries, positives and negatives)
-            features = model(images.to(args.device))
+            if args.separate_branch:
+                # model is for query and model_db is for database
+                # query1 + pos1 + neg1s(neg_num) + query2 + pos2 + neg2(neg_num) + ...
+                # Extract query image
+                query_images_index = np.arange(0, len(images), 1 + 1 + args.negs_num_per_query)
+                images_index = np.arange(0, len(images))
+                database_images_index = np.setdiff1d(images_index, queries_indexes, assume_unique=True)
+                query_feature = model(images[query_images_index].to(args.device))
+                database_feature = model_db(images[database_images_index].to(args.device))
+                features = torch.empty((len(images), query_feature.shape[1]))
+                features[query_images_index] = query_feature
+                features[database_images_index] = database_feature
+                del database_feature, query_feature
+            else:
+                features = model(images.to(args.device))
             loss_triplet = 0
 
             if args.criterion == "triplet":
