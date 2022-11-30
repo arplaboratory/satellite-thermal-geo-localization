@@ -27,6 +27,7 @@ from os.path import join
 from datetime import datetime
 from torch.utils.model_zoo import load_url
 from google_drive_downloader import GoogleDriveDownloader as gdd
+import copy
 
 import test
 import util
@@ -62,6 +63,8 @@ logging.info(f"The outputs are being saved in {args.save_dir}")
 ######################################### MODEL #########################################
 model = network.GeoLocalizationNet(args)
 model = model.to(args.device)
+if args.separate_branch:
+    model_db = copy.deepcopy(model)
 
 if args.aggregation in ["netvlad", "crn"]:
     args.features_dim *= args.netvlad_clusters
@@ -98,10 +101,15 @@ if args.off_the_shelf.startswith("radenovic") or args.off_the_shelf.startswith("
     model.load_state_dict(renamed_state_dict)
 elif args.resume is not None:
     logging.info(f"Resuming model from {args.resume}")
-    model = util.resume_model(args, model)
+    if args.separate_path:
+        model, model_db = util.resume_model_separate(args, model, model_db)
+    else:
+        model = util.resume_model(args, model)
 # Enable DataParallel after loading checkpoint, otherwise doing it before
 # would append "module." in front of the keys of the state dict triggering errors
 model = torch.nn.DataParallel(model)
+if args.separate_branch:
+    model_db = torch.nn.DataParallel(model_db)
 
 if args.pca_dim is None:
     pca = None
@@ -117,7 +125,10 @@ test_ds = datasets_ws.BaseDataset(
 logging.info(f"Test set: {test_ds}")
 
 ######################################### TEST on TEST SET #########################################
-recalls, recalls_str = test.test(args, test_ds, model, args.test_method, pca)
+if args.separate_branch:
+    recalls, recalls_str = test.test(args, test_ds, model, model_db = model_db, test_method = args.test_method, pca = pca)
+else:
+    recalls, recalls_str = test.test(args, test_ds, model, test_method = args.test_method, pca = pca)
 logging.info(f"Recalls on {test_ds}: {recalls_str}")
 
 logging.info(f"Finished in {str(datetime.now() - start_time)[:-7]}")
