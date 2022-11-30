@@ -459,6 +459,15 @@ class TripletsDataset(BaseDataset):
     def compute_cache(args, model, model_db, subset_ds, cache_shape, database_num):
         """Compute the cache containing features of images, which is used to
         find best positive and hardest negatives."""
+
+        # RAMEfficient2DMatrix can be replaced by np.zeros, but using
+        # RAMEfficient2DMatrix is RAM efficient for full database mining.
+        if args.use_faiss_gpu:
+            cache = torch.zeros(cache_shape).to(args.device)
+            # cache = MultiGPUTensor(cache_shape)
+        else:
+            cache = RAMEfficient2DMatrix(cache_shape, dtype=np.float32)
+
         if model_db is not None:
             subset_db_dl = DataLoader(
                 dataset=subset_ds[0],
@@ -476,14 +485,6 @@ class TripletsDataset(BaseDataset):
             )
             model = model.eval()
             model_db = model_db.eval()
-
-            # RAMEfficient2DMatrix can be replaced by np.zeros, but using
-            # RAMEfficient2DMatrix is RAM efficient for full database mining.
-            if args.use_faiss_gpu:
-                cache = torch.zeros(cache_shape).to(args.device)
-                # cache = MultiGPUTensor(cache_shape)
-            else:
-                cache = RAMEfficient2DMatrix(cache_shape, dtype=np.float32)
             
             with torch.no_grad():
                 for images, indexes in tqdm(subset_db_dl, ncols=100):
@@ -493,13 +494,14 @@ class TripletsDataset(BaseDataset):
                         cache[indexes] = features
                     else:
                         cache[indexes.numpy()] = features.cpu().numpy()
+                        
                 for images, indexes in tqdm(subset_qr_dl, ncols=100):
                     images = images.to(args.device)
                     features = model(images)
                     if args.use_faiss_gpu:
-                        cache[indexes + database_num] = features
+                        cache[indexes] = features
                     else:
-                        cache[indexes.numpy() + database_num] = features.cpu().numpy()
+                        cache[indexes.numpy()] = features.cpu().numpy()
         else:
             subset_dl = DataLoader(
                 dataset=subset_ds,
@@ -509,14 +511,6 @@ class TripletsDataset(BaseDataset):
                 pin_memory=(args.device == "cuda"),
             )
             model = model.eval()
-
-            # RAMEfficient2DMatrix can be replaced by np.zeros, but using
-            # RAMEfficient2DMatrix is RAM efficient for full database mining.
-            if args.use_faiss_gpu:
-                cache = torch.zeros(cache_shape).to(args.device)
-                # cache = MultiGPUTensor(cache_shape)
-            else:
-                cache = RAMEfficient2DMatrix(cache_shape, dtype=np.float32)
             
             with torch.no_grad():
                 for images, indexes in tqdm(subset_dl, ncols=100):
@@ -841,6 +835,9 @@ class RAMEfficient2DMatrix:
         self.dtype = dtype
         self.matrix = [None] * shape[0]
 
+    def __len__(self):
+        return len(self.matrix)
+
     def __setitem__(self, indexes, vals):
         assert vals.shape[1] == self.shape[1], f"{vals.shape[1]} {self.shape[1]}"
         for i, val in zip(indexes, vals):
@@ -874,7 +871,9 @@ class MultiGPUTensor:
             for i in range(self.gpu_nums):
                 self.matrix_list.append(torch.zeros((self.interval, shape[1])).to(f"cuda:{i}"))
         
-
+    def __len__(self):
+        return len(self.matrix_list)
+        
     def __setitem__(self, indexes, vals):
         assert vals.shape[1] == self.shape[1], f"{vals.shape[1]} {self.shape[1]}"
         for i, val in zip(indexes, vals):

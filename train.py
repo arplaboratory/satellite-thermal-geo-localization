@@ -239,7 +239,10 @@ for epoch_num in range(start_epoch_num, args.epochs_num):
 
         # Compute triplets to use in the triplet loss
         train_ds.is_inference = True
-        train_ds.compute_triplets(args, model)
+        if args.separate_branch:
+            train_ds.compute_triplets(args, model, model_db)
+        else:
+            train_ds.compute_triplets(args, model)
         train_ds.is_inference = False
 
         if args.use_faiss_gpu:
@@ -254,7 +257,6 @@ for epoch_num in range(start_epoch_num, args.epochs_num):
             drop_last=True,
         )
 
-        torch.cuda.empty_cache()
         model = model.train()
         if args.separate_branch:
             model_db = model_db.train()
@@ -274,10 +276,12 @@ for epoch_num in range(start_epoch_num, args.epochs_num):
                 # Extract query image
                 query_images_index = np.arange(0, len(images), 1 + 1 + args.negs_num_per_query)
                 images_index = np.arange(0, len(images))
-                database_images_index = np.setdiff1d(images_index, queries_indexes, assume_unique=True)
-                query_feature = model(images[query_images_index].to(args.device))
-                database_feature = model_db(images[database_images_index].to(args.device))
-                features = torch.empty((len(images), query_feature.shape[1]))
+                database_images_index = np.setdiff1d(images_index, query_images_index, assume_unique=True)
+                query_images = images[query_images_index]
+                database_images = images[database_images_index]
+                database_feature = model_db(database_images.to(args.device))
+                query_feature = model(query_images.to(args.device))
+                features = torch.empty((len(images), query_feature.shape[1])).to(args.device)
                 features[query_images_index] = query_feature
                 features[database_images_index] = database_feature
                 del database_feature, query_feature
@@ -363,7 +367,7 @@ for epoch_num in range(start_epoch_num, args.epochs_num):
         {
             "epoch_num": epoch_num,
             "model_state_dict": model.state_dict(),
-            "model_db_state_dict": model_db.state_dict() if model_db is not None else None,
+            "model_db_state_dict": model_db.state_dict() if args.separate_branch else None,
             "optimizer_state_dict": optimizer.state_dict(),
             "recalls": recalls,
             "best_r5": best_r5,

@@ -343,4 +343,7 @@ def parse_arguments():
     
     if args.separate_branch and args.criterion in ["sare_joint", "sare_ind"]:
         raise ValueError("separate_branch currently only supports triplet loss")
+
+    if args.separate_branch and (args.train_batch_size % torch.cuda.device_count() != 0 or args.infer_batch_size % torch.cuda.device_count() != 0):
+        raise ValueError("separate_branch requires the batch size is the times of gpu number")
     return args
