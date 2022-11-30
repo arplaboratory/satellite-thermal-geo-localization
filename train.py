@@ -356,7 +356,10 @@ for epoch_num in range(start_epoch_num, args.epochs_num):
     )
 
     # Compute recalls on validation set
-    recalls, recalls_str = test.test(args, val_ds, model)
+    if args.separate_branch:
+        recalls, recalls_str = test.test(args, val_ds, model, model_db)
+    else:
+        recalls, recalls_str = test.test(args, val_ds, model)
     logging.info(f"Recalls on val set {val_ds}: {recalls_str}")
 
     is_best = recalls[1] > best_r5
