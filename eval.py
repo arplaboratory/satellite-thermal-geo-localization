@@ -101,7 +101,7 @@ if args.off_the_shelf.startswith("radenovic") or args.off_the_shelf.startswith("
     model.load_state_dict(renamed_state_dict)
 elif args.resume is not None:
     logging.info(f"Resuming model from {args.resume}")
-    if args.separate_path:
+    if args.separate_branch:
         model, model_db = util.resume_model_separate(args, model, model_db)
     else:
         model = util.resume_model(args, model)

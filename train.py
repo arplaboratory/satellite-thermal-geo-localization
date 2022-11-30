@@ -409,7 +409,7 @@ best_model_state_dict = torch.load(join(args.save_dir, "best_model.pth"))[
     "model_state_dict"
 ]
 model.load_state_dict(best_model_state_dict)
-if args.separate_path:
+if args.separate_branch:
     best_model_db_state_dict = torch.load(join(args.save_dir, "best_model.pth"))[
         "model_db_state_dict"
     ]
