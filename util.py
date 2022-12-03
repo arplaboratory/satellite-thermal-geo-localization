@@ -37,6 +37,8 @@ def resume_model(args, model):
         # The pre-trained models that we provide in the README do not have 'state_dict' in the keys as
         # the checkpoint is directly the state dict
         state_dict = checkpoint
+    if "model_db_state_dict" in checkpoint:
+        raise ValueError("The model is trained separately. You should add separate_branc.h")
     # if the model contains the prefix "module" which is appendend by
     # DataParallel, remove it to avoid errors when loading dict
     if list(state_dict.keys())[0].startswith("module"):
