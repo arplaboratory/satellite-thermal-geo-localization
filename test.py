@@ -416,10 +416,11 @@ def test(args, eval_ds, model, model_db=None, test_method="hard_resize", pca=Non
                                             folder_config[database_name]['maps'][database_index])
         database_region = folder_config[database_name]['valid_regions'][database_index]
         if hasattr(queries_index, "__len__"):
-            for queries_index_single in queries_index:
+            for i in range(len(queries_index)):
+                queries_index_single = queries_index[i]
                 queries_region = folder_config[queries_name]['valid_regions'][queries_index_single]
                 valid_region = calc_overlap(database_region, queries_region)
-                save_heatmap_simulation(position_m, error_m, database_image_path, valid_region, args.save_dir)
+                save_heatmap_simulation(position_m, error_m, database_image_path, valid_region, args.save_dir, i)
         else:
             queries_region = folder_config[queries_name]['valid_regions'][queries_index]
             valid_region = calc_overlap(database_region, queries_region)
