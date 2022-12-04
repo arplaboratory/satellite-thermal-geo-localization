@@ -181,6 +181,8 @@ def test(args, eval_ds, model, model_db=None, test_method="hard_resize", pca=Non
     ], f"test_method can't be {test_method}"
 
     if args.efficient_ram_testing:
+        if args.separate_branch:
+            raise NotImplementedError()
         return test_efficient_ram_usage(args, eval_ds, model, test_method)
 
     model = model.eval()
@@ -401,16 +403,27 @@ def test(args, eval_ds, model, model_db=None, test_method="hard_resize", pca=Non
         database_name = dataset_name_list[0]
         database_index = int(dataset_name_list[1])
         queries_name = dataset_name_list[2]
-        queries_index = int(dataset_name_list[3])
+        if len(dataset_name_list[3]) > 1:
+            queries_index = []
+            for i in range(len(dataset_name_list[3])):
+                queries_index.append(int(dataset_name_list[3][i]))
+        else:
+            queries_index = int(dataset_name_list[3])
         folder_config_path = './folder_config.yml'
         with open(folder_config_path, 'r') as f:
             folder_config = yaml.safe_load(f)
         database_image_path = os.path.join(args.datasets_folder, folder_config[database_name]['name'],
                                             folder_config[database_name]['maps'][database_index])
         database_region = folder_config[database_name]['valid_regions'][database_index]
-        queries_region = folder_config[queries_name]['valid_regions'][queries_index]
-        valid_region = calc_overlap(database_region, queries_region)
-        save_heatmap_simulation(position_m, error_m, database_image_path, valid_region, args.save_dir)
+        if hasattr(queries_index, "__len__"):
+            for queries_index_single in queries_index:
+                queries_region = folder_config[queries_name]['valid_regions'][queries_index_single]
+                valid_region = calc_overlap(database_region, queries_region)
+                save_heatmap_simulation(position_m, error_m, database_image_path, valid_region, args.save_dir)
+        else:
+            queries_region = folder_config[queries_name]['valid_regions'][queries_index]
+            valid_region = calc_overlap(database_region, queries_region)
+            save_heatmap_simulation(position_m, error_m, database_image_path, valid_region, args.save_dir)
             
     return recalls, recalls_str
 
