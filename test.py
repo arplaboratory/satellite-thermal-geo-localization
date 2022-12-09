@@ -181,7 +181,7 @@ def test(args, eval_ds, model, model_db=None, test_method="hard_resize", pca=Non
     ], f"test_method can't be {test_method}"
 
     if args.efficient_ram_testing:
-        if args.separate_branch:
+        if model_db is not None:
             raise NotImplementedError()
         return test_efficient_ram_usage(args, eval_ds, model, test_method)
 

@@ -456,7 +456,7 @@ class TripletsDataset(BaseDataset):
             self.compute_triplets_random(args, model, model_db)
 
     @staticmethod
-    def compute_cache(args, model, model_db, subset_ds, cache_shape, database_num):
+    def compute_cache(args, model, model_db, subset_ds, cache_shape):
         """Compute the cache containing features of images, which is used to
         find best positive and hardest negatives."""
 
@@ -589,7 +589,7 @@ class TripletsDataset(BaseDataset):
                 self, list(sampled_queries_indexes + self.database_num)
             )
             cache = self.compute_cache(
-                args, model, model_db, [subset_db_ds, subset_qr_ds], (len(self), args.features_dim), self.database_num
+                args, model, model_db, [subset_db_ds, subset_qr_ds], (len(self), args.features_dim)
             )
         else:
             subset_ds = Subset(
@@ -597,7 +597,7 @@ class TripletsDataset(BaseDataset):
                 list(sampled_queries_indexes + self.database_num)
             )
             cache = self.compute_cache(
-                args, model, model_db, subset_ds, (len(self), args.features_dim), self.database_num
+                args, model, model_db, subset_ds, (len(self), args.features_dim)
             )
         
         if args.use_faiss_gpu:
@@ -668,7 +668,7 @@ class TripletsDataset(BaseDataset):
                 self, list(sampled_queries_indexes + self.database_num)
             )
             cache = self.compute_cache(
-                args, model, model_db, [subset_db_ds, subset_qr_ds], (len(self), args.features_dim), self.database_num
+                args, model, model_db, [subset_db_ds, subset_qr_ds], (len(self), args.features_dim)
             )
         else:
             subset_ds = Subset(
@@ -676,7 +676,7 @@ class TripletsDataset(BaseDataset):
                 list(sampled_queries_indexes + self.database_num)
             )
             cache = self.compute_cache(
-                args, model, model_db, subset_ds, (len(self), args.features_dim), self.database_num
+                args, model, model_db, subset_ds, (len(self), args.features_dim)
             )
 
         if args.use_faiss_gpu:
@@ -766,7 +766,7 @@ class TripletsDataset(BaseDataset):
                 self, list(sampled_queries_indexes + self.database_num)
             )
             cache = self.compute_cache(
-                args, model, model_db, [subset_db_ds, subset_qr_ds], (len(self), args.features_dim), self.database_num
+                args, model, model_db, [subset_db_ds, subset_qr_ds], (len(self), args.features_dim)
             )
         else:
             subset_ds = Subset(
@@ -774,7 +774,7 @@ class TripletsDataset(BaseDataset):
                 list(sampled_queries_indexes + self.database_num)
             )
             cache = self.compute_cache(
-                args, model, model_db, subset_ds, (len(self), args.features_dim), self.database_num
+                args, model, model_db, subset_ds, (len(self), args.features_dim)
             )
 
         if args.use_faiss_gpu:

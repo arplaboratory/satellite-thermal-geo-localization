@@ -38,7 +38,7 @@ def resume_model(args, model):
         # the checkpoint is directly the state dict
         state_dict = checkpoint
     if "model_db_state_dict" in checkpoint:
-        raise ValueError("The model is trained separately. You should add separate_branc.h")
+        raise ValueError("The model is trained separately. You should add separate_branch.")
     # if the model contains the prefix "module" which is appendend by
     # DataParallel, remove it to avoid errors when loading dict
     if list(state_dict.keys())[0].startswith("module"):
@@ -76,6 +76,8 @@ def resume_train(args, model, optimizer=None, strict=False):
     """Load model, optimizer, and other training parameters"""
     logging.debug(f"Loading checkpoint: {args.resume}")
     checkpoint = torch.load(args.resume)
+    if "model_db_state_dict" in checkpoint:
+        raise ValueError("The model is trained separately. You should add separate_branch.")
     start_epoch_num = checkpoint["epoch_num"]
     model.load_state_dict(checkpoint["model_state_dict"], strict=strict)
     if optimizer:

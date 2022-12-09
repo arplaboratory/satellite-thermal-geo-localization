@@ -67,12 +67,14 @@ if args.aggregation in ["netvlad", "crn"]:  # If using NetVLAD layer, initialize
             args, train_ds, model.backbone)
     args.features_dim *= args.netvlad_clusters
 
+model = torch.nn.DataParallel(model)
+if torch.cuda.device_count() >= 2:
+    # When using more than 1GPU, use sync_batchnorm for torch.nn.DataParallel
+    model = convert_model(model)
+    model = model.to(args.device)
+
 if args.separate_branch:
     model_db = copy.deepcopy(model)
-    model_db = torch.nn.DataParallel(model_db)
-
-model = torch.nn.DataParallel(model)
-
 # Setup Optimizer and Loss
 if args.aggregation == "crn":
     crn_params = list(model.module.aggregation.crn.parameters())
@@ -213,17 +215,10 @@ else:
 if args.backbone.startswith("vit"):
     logging.info(f"Output dimension of the model is {args.features_dim}")
 else:
+    model = model.eval()
     logging.info(
         f"Output dimension of the model is {args.features_dim}, with {util.get_flops(model, args.resize)}"
     )
-
-if torch.cuda.device_count() >= 2:
-    # When using more than 1GPU, use sync_batchnorm for torch.nn.DataParallel
-    model = convert_model(model)
-    model = model.cuda()
-    if args.separate_branch:
-        model_db = convert_model(model_db)
-        model_db = model_db.cuda()
 
 # Training loop
 for epoch_num in range(start_epoch_num, args.epochs_num):
