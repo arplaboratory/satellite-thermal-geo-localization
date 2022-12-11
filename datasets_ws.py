@@ -562,6 +562,8 @@ class TripletsDataset(BaseDataset):
         else:
             neg_nums = neg_nums.reshape(-1)
         neg_indexes = neg_samples[neg_nums].astype(np.int32)
+        if not hasattr(neg_indexes, "__len__"):
+            neg_indexes = np.expand_dims(neg_indexes, 0)
         return neg_indexes
 
     def compute_triplets_random(self, args, model, model_db):
