@@ -32,6 +32,11 @@ def parse_arguments():
         help="Have two separate branches"
     )
     parser.add_argument(
+        "--weight_decay",
+        type=float,
+        default=0.0
+    )
+    parser.add_argument(
         "--train_batch_size",
         type=int,
         default=4,

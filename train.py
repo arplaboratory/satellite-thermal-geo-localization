@@ -67,14 +67,20 @@ if args.aggregation in ["netvlad", "crn"]:  # If using NetVLAD layer, initialize
             args, train_ds, model.backbone)
     args.features_dim *= args.netvlad_clusters
 
+if args.separate_branch:
+    model_db = copy.deepcopy(model)
+    model_db = torch.nn.DataParallel(model_db)
+    if torch.cuda.device_count() >= 2:
+        # When using more than 1GPU, use sync_batchnorm for torch.nn.DataParallel
+        model_db = convert_model(model_db)
+        model_db = model_db.to(args.device)
+
 model = torch.nn.DataParallel(model)
 if torch.cuda.device_count() >= 2:
     # When using more than 1GPU, use sync_batchnorm for torch.nn.DataParallel
     model = convert_model(model)
     model = model.to(args.device)
 
-if args.separate_branch:
-    model_db = copy.deepcopy(model)
 # Setup Optimizer and Loss
 if args.aggregation == "crn":
     crn_params = list(model.module.aggregation.crn.parameters())
@@ -154,9 +160,9 @@ if args.aggregation == "crn":
 else:
     if args.optim == "adam":
         if args.separate_branch:
-            optimizer = torch.optim.Adam(list(model.parameters()) + list(model_db.parameters()), lr=args.lr)
+            optimizer = torch.optim.Adam(list(model.parameters()) + list(model_db.parameters()), lr=args.lr, weight_decay=args.weight_decay)
         else:
-            optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
+            optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     elif args.optim == "sgd":
         if args.separate_branch:
             optimizer = torch.optim.SGD(
@@ -410,6 +416,11 @@ if args.separate_branch:
     ]
     model_db.load_state_dict(best_model_db_state_dict)
 
-recalls, recalls_str = test.test(
-    args, test_ds, model, model_db, test_method=args.test_method)
+if args.separate_branch:
+    recalls, recalls_str = test.test(
+        args, test_ds, model, model_db=model_db, test_method=args.test_method)
+else:
+    recalls, recalls_str = test.test(
+        args, test_ds, model, model_db=model, test_method=args.test_method)
+        
 logging.info(f"Recalls on {test_ds}: {recalls_str}")
