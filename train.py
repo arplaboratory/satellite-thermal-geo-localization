@@ -63,8 +63,12 @@ model = model.to(args.device)
 if args.aggregation in ["netvlad", "crn"]:  # If using NetVLAD layer, initialize it
     if not args.resume:
         train_ds.is_inference = True
-        model.aggregation.initialize_netvlad_layer(
-            args, train_ds, model.backbone)
+        if args.conv_output_dim is not None:
+            model.aggregation[1].initialize_netvlad_layer(
+                args, train_ds, model.backbone)
+        else:
+            model.aggregation.initialize_netvlad_layer(
+                args, train_ds, model.backbone)
     args.features_dim *= args.netvlad_clusters
 
 if args.separate_branch:

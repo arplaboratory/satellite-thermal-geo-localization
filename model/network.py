@@ -51,6 +51,15 @@ class GeoLocalizationNet(nn.Module):
                                              nn.Linear(args.features_dim, args.fc_output_dim),
                                              L2Norm())
             args.features_dim = args.fc_output_dim
+        
+        if args.aggregation in ["netvlad", "crn"] and args.conv_output_dim != None:
+            # Concatenate conv layer to the aggregation layer
+            actual_conv_output_dim = int(args.conv_output_dim / args.netvlad_clusters)
+            print(actual_conv_output_dim)
+            self.aggregation = nn.Sequential(nn.Conv2d(args.features_dim, actual_conv_output_dim, 1),
+                                             self.aggregation)
+            args.features_dim = actual_conv_output_dim
+
         if args.non_local:
             non_local_list = [NonLocalBlock(channel_feat=get_output_channels_dim(self.backbone),
                                            channel_inner=args.channel_bottleneck)]* args.num_non_local

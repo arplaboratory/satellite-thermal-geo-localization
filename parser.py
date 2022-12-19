@@ -354,4 +354,8 @@ def parse_arguments():
 
     if args.separate_branch and (args.train_batch_size % torch.cuda.device_count() != 0 or args.infer_batch_size % torch.cuda.device_count() != 0):
         raise ValueError("separate_branch requires the batch size is the times of gpu number")
+
+    if args.fc_output_dim is not None and args.conv_output_dim is not None:
+        raise ValueError("fc_output_dim and conv_output_dim cannot be used at the same time")
+
     return args
