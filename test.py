@@ -267,6 +267,7 @@ def test(args, eval_ds, model, model_db=None, test_method="hard_resize", pca=Non
 
     queries_features = all_features[eval_ds.database_num:]
     database_features = all_features[: eval_ds.database_num]
+    logging.info(f"Final feature dim: {queries_features.shape[1]}")
 
     if args.use_faiss_gpu:
         torch.cuda.empty_cache()

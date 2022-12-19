@@ -56,26 +56,6 @@ def collate_fn(batch):
         )  # Increment local indexes by offset (len(global_indexes) is 12)
     return images, torch.cat(tuple(triplets_local_indexes)), triplets_global_indexes
 
-
-class PCADataset(data.Dataset):
-    def __init__(
-        self, args, datasets_folder="dataset", dataset_folder="pitts30k/images/train"
-    ):
-        dataset_folder_full_path = join(datasets_folder, dataset_folder)
-        if not os.path.exists(dataset_folder_full_path):
-            raise FileNotFoundError(
-                f"Folder {dataset_folder_full_path} does not exist")
-        self.images_paths = sorted(
-            glob(join(dataset_folder_full_path, "**", "*.jpg"), recursive=True)
-        )
-
-    def __getitem__(self, index):
-        return base_transform(path_to_pil_img(self.images_paths[index]))
-
-    def __len__(self):
-        return len(self.images_paths)
-
-
 class BaseDataset(data.Dataset):
     """Dataset with images from database and queries, used for inference (testing and building cache)."""
 
@@ -266,6 +246,30 @@ class BaseDataset(data.Dataset):
             self.database_folder_h5_df.close()
             self.queries_folder_h5_df.close()
 
+class PCADataset(BaseDataset):
+    def __init__(
+        self, args, datasets_folder="datasets", dataset_name="pitts30k"
+        ):
+        # Always use train for PCA fit
+        super().__init__(args, datasets_folder, dataset_name, split="train")
+
+    def __getitem__(self, index):
+        # return base_transform(path_to_pil_img(self.images_paths[index]))
+        # Init
+        if self.database_folder_h5_df is None:
+            self.database_folder_h5_df = h5py.File(
+                self.database_folder_h5_path, "r")
+            self.queries_folder_h5_df = h5py.File(
+                self.queries_folder_h5_path, "r")
+        img = self._find_img_in_h5(index)
+        img = base_transform(img)
+        # PCA resize or not?
+        if self.test_method == "hard_resize":
+            # self.test_method=="hard_resize" is the default, resizes all images to the same size.
+            img = transforms.functional.resize(img, self.resize)
+        else:
+            img = self._test_query_transform(img)
+        return img
 
 class TripletsDataset(BaseDataset):
     """Dataset used for training, it is used to compute the triplets

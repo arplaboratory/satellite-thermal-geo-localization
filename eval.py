@@ -117,7 +117,7 @@ else:
     full_features_dim = args.features_dim
     args.features_dim = args.pca_dim
     pca = util.compute_pca(
-        args, model, args.pca_dataset_folder, full_features_dim)
+        args, model, full_features_dim)
 
 ######################################### DATASETS #########################################
 test_ds = datasets_ws.BaseDataset(

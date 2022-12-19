@@ -7,6 +7,7 @@ import numpy as np
 from collections import OrderedDict
 from os.path import join
 from sklearn.decomposition import PCA
+from tqdm import tqdm
 
 import datasets_ws
 
@@ -37,7 +38,7 @@ def resume_model(args, model):
         # The pre-trained models that we provide in the README do not have 'state_dict' in the keys as
         # the checkpoint is directly the state dict
         state_dict = checkpoint
-    if "model_db_state_dict" in checkpoint:
+    if "model_db_state_dict" in checkpoint and checkpoint["model_db_state_dict"] is not None:
         raise ValueError("The model is trained separately. You should add separate_branch.")
     # if the model contains the prefix "module" which is appendend by
     # DataParallel, remove it to avoid errors when loading dict
@@ -119,15 +120,16 @@ def resume_train_separate(args, model, model_db, optimizer=None, strict=False):
         )
     return model, model_db, optimizer, best_r5, start_epoch_num, not_improved_num
 
-def compute_pca(args, model, pca_dataset_folder, full_features_dim):
+def compute_pca(args, model, full_features_dim):
     model = model.eval()
     pca_ds = datasets_ws.PCADataset(
-        args, args.datasets_folder, pca_dataset_folder)
+        args, args.datasets_folder, args.dataset_name)
     dl = torch.utils.data.DataLoader(
         pca_ds, args.infer_batch_size, shuffle=True)
     pca_features = np.empty([min(len(pca_ds), 2**14), full_features_dim])
+    logging.info("Computing PCA")
     with torch.no_grad():
-        for i, images in enumerate(dl):
+        for i, images in tqdm(enumerate(dl), ncols=100):
             if i * args.infer_batch_size >= len(pca_features):
                 break
             features = model(images).cpu().numpy()

@@ -180,6 +180,12 @@ def parse_arguments():
         help="Output dimension of fully connected layer. If None, don't use a fully connected layer.",
     )
     parser.add_argument(
+        "--conv_output_dim",
+        type=int,
+        default=None,
+        help="Output dimension of conv layer. If None, don't use a conv layer.",
+    )
+    parser.add_argument(
         "--unfreeze",
         action='store_true',
         help="Unfreeze the first few layers for backbone",
@@ -336,9 +342,6 @@ def parse_arguments():
             raise ValueError(
                 "Off-the-shelf models are trained only with ResNet-50/101 + GeM + FC 2048"
             )
-
-    if args.pca_dim != None and args.pca_dataset_folder == None:
-        raise ValueError("Please specify --pca_dataset_folder when using pca")
 
     if args.prior_location_threshold != -1 and args.prior_location_threshold <= args.val_positive_dist_threshold:
         raise ValueError(f"Prior position theshold is too small to get enough negative samples. Set it to be at least more than {args.val_positive_dist_threshold}")
