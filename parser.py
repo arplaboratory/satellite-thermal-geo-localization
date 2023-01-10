@@ -10,6 +10,16 @@ def parse_arguments():
     )
     # Training parameters
     parser.add_argument(
+        "--add_bn",
+        action="store_true",
+        help="Add bn to compression layers"
+    )
+    parser.add_argument(
+        "--remove_relu",
+        action="store_true",
+        help="Remove last relu layer of backbone"
+    )
+    parser.add_argument(
         "--use_faiss_gpu",
         action="store_true",
         help="Choose if we use faiss gpu version for mining. Only work for full and partial."

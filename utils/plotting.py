@@ -52,7 +52,7 @@ def process_results_simulation(error_m, save_folder):
     plt.ylabel("No. occurences")
     plt.savefig(os.path.join(save_folder, 'hist_error_localization.pdf'))
 
-def save_heatmap_simulation(pos, err, database_image_path, config, save_folder):
+def save_heatmap_simulation(pos, err, database_image_path, config, save_folder, index=None):
     basemap_img = cv2.imread(database_image_path)
     basemap_img = basemap_img[config[0]:config[2], config[1]:config[3], :]
 
@@ -66,4 +66,7 @@ def save_heatmap_simulation(pos, err, database_image_path, config, save_folder):
         else:
             cv2.circle(basemap_img, (pos_single[1] - config[1], pos_single[0] - config[0]), 9, red, 2)
 
-    cv2.imwrite(os.path.join(save_folder, "heatmap.png"), basemap_img)
+    if index is None:
+        cv2.imwrite(os.path.join(save_folder, "heatmap.png"), basemap_img)
+    else:
+        cv2.imwrite(os.path.join(save_folder, f"heatmap{index}.png"), basemap_img)
