@@ -92,10 +92,19 @@ def get_aggregation(args):
     elif args.aggregation == "rmac":
         return aggregation.RMAC()
     elif args.aggregation == "netvlad":
-        return aggregation.NetVLAD(clusters_num=args.netvlad_clusters, dim=args.features_dim,
-                                   work_with_tokens=args.work_with_tokens)
+        if hasattr(args, "conv_output_dim") and args.conv_output_dim is not None:
+            actual_conv_output_dim = int(args.conv_output_dim / args.netvlad_clusters)
+            return aggregation.NetVLAD(clusters_num=args.netvlad_clusters, dim=actual_conv_output_dim,
+                                    work_with_tokens=args.work_with_tokens)
+        else:
+            return aggregation.NetVLAD(clusters_num=args.netvlad_clusters, dim=args.features_dim,
+                                    work_with_tokens=args.work_with_tokens)
     elif args.aggregation == 'crn':
-        return aggregation.CRN(clusters_num=args.netvlad_clusters, dim=args.features_dim)
+        if hasattr(args, "conv_output_dim") and args.conv_output_dim is not None:
+            actual_conv_output_dim = int(args.conv_output_dim / args.netvlad_clusters)
+            return aggregation.CRN(clusters_num=args.netvlad_clusters, dim=actual_conv_output_dim)
+        else:
+            return aggregation.CRN(clusters_num=args.netvlad_clusters, dim=args.features_dim)
     elif args.aggregation == "rrm":
         return aggregation.RRM(args.features_dim)
     elif args.aggregation == 'none'\
