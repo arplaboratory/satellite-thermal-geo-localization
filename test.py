@@ -268,18 +268,18 @@ def test(args, eval_ds, model, model_db=None, test_method="hard_resize", pca=Non
     queries_features = all_features[eval_ds.database_num:]
     database_features = all_features[: eval_ds.database_num]
     logging.info(f"Final feature dim: {queries_features.shape[1]}")
-
-    if args.use_faiss_gpu:
-        torch.cuda.empty_cache()
-        res = faiss.StandardGpuResources()
-        faiss_index = faiss.GpuIndexFlatL2(res, args.features_dim)
-    else:
-        faiss_index = faiss.IndexFlatL2(args.features_dim)
-    faiss_index.add(database_features)
-    del database_features, all_features
+        
+    del all_features
 
     logging.debug("Calculating recalls")
     if args.prior_location_threshold == -1:
+        if args.use_faiss_gpu:
+            torch.cuda.empty_cache()
+            res = faiss.StandardGpuResources()
+            faiss_index = faiss.GpuIndexFlatL2(res, args.features_dim)
+        else:
+            faiss_index = faiss.IndexFlatL2(args.features_dim)
+        del database_features
         distances, predictions = faiss_index.search(
             queries_features, max(args.recall_values)
         )
@@ -287,31 +287,18 @@ def test(args, eval_ds, model, model_db=None, test_method="hard_resize", pca=Non
         distances, predictions = [[] for i in range(len(queries_features))], [[] for i in range(len(queries_features))]
         hard_negatives_per_query = eval_ds.get_hard_negatives()
         for query_index in tqdm(range(len(predictions))):
-            distances_single = []
-            predictions_single = []
-            current_search = 0
-            while len(predictions_single) < max(args.recall_values):
-                current_search += max(args.recall_values) * 5
-                if current_search >= 2048: #faiss-gpu limit
-                    while len(predictions_single) < max(args.recall_values):
-                        distances_single.append(100000)
-                        predictions_single.append(-1)
-                    break
-                distances_single_call, predictions_single_call = faiss_index.search(
-                np.expand_dims(queries_features[query_index], axis=0), current_search
-                )
-                distances_single_call = distances_single_call[0][current_search - max(args.recall_values) * 5 : current_search]
-                predictions_single_call = predictions_single_call[0][current_search - max(args.recall_values) * 5 : current_search]
-                for local_index, pred in enumerate(predictions_single_call):
-                    if pred in hard_negatives_per_query[query_index]:
-                        distances_single.append(distances_single_call[local_index])
-                        predictions_single.append(predictions_single_call[local_index])
-            distances_single = np.array(distances_single[:max(args.recall_values)])
-            predictions_single = np.array(predictions_single[:max(args.recall_values)])
+            faiss_index = faiss.IndexFlatL2(args.features_dim)
+            faiss_index.add(database_features[hard_negatives_per_query[query_index]])
+            distances_single, local_predictions_single = faiss_index.search(
+                np.expand_dims(queries_features[query_index], axis=0), max(args.recall_values))
+            # logging.debug(f"distances_single:{distances_single}")
+            # logging.debug(f"predictions_single:{predictions_single}")
             distances[query_index] = distances_single
+            predictions_single = hard_negatives_per_query[query_index][local_predictions_single]
             predictions[query_index] = predictions_single
-        distances = np.stack(distances, axis=0)
-        predictions = np.stack(predictions, axis=0)
+        del database_features
+        distances = np.concatenate(distances, axis=0)
+        predictions = np.concatenate(predictions, axis=0)
     if test_method == "nearest_crop":
         distances = np.reshape(distances, (eval_ds.queries_num, 20 * 5))
         predictions = np.reshape(predictions, (eval_ds.queries_num, 20 * 5))
@@ -381,22 +368,26 @@ def test(args, eval_ds, model, model_db=None, test_method="hard_resize", pca=Non
             distance = distances[query_index]
             prediction = predictions[query_index]
             sort_idx = np.argsort(distance)
-            if distance[sort_idx[0]] == 0:
+            if args.use_best_n == 1:
                 best_position = eval_ds.database_utms[prediction[sort_idx[0]]]
             else:
-                mean = distance[sort_idx[0]]
-                sigma = distance[sort_idx[0]] / distance[sort_idx[-1]]
-                X = np.array(distance[sort_idx[:samples_to_be_used]]).reshape((-1,))
-                weights = np.exp(-np.square(X - mean) / (2 * sigma ** 2))  # gauss
-                weights = weights / np.sum(weights)
+                if distance[sort_idx[0]] == 0:
+                    best_position = eval_ds.database_utms[prediction[sort_idx[0]]]
+                else:
+                    mean = distance[sort_idx[0]]
+                    sigma = distance[sort_idx[0]] / distance[sort_idx[-1]]
+                    X = np.array(distance[sort_idx[:samples_to_be_used]]).reshape((-1,))
+                    weights = np.exp(-np.square(X - mean) / (2 * sigma ** 2))  # gauss
+                    weights = weights / np.sum(weights)
 
-                x = y = 0
-                for p, w in zip(eval_ds.database_utms[prediction[sort_idx[:samples_to_be_used]]], weights.tolist()):
-                    y += p[0] * w
-                    x += p[1] * w
-                best_position = (y, x)
+                    x = y = 0
+                    for p, w in zip(eval_ds.database_utms[prediction[sort_idx[:samples_to_be_used]]], weights.tolist()):
+                        y += p[0] * w
+                        x += p[1] * w
+                    best_position = (y, x)
             actual_position = eval_ds.queries_utms[query_index]
             error = np.linalg.norm((actual_position[0]-best_position[0], actual_position[1]-best_position[1]))
+            logging.debug(error)
             error_m.append(error)
             position_m.append(actual_position)
         process_results_simulation(error_m, args.save_dir)
