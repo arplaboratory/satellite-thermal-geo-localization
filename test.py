@@ -387,7 +387,6 @@ def test(args, eval_ds, model, model_db=None, test_method="hard_resize", pca=Non
                     best_position = (y, x)
             actual_position = eval_ds.queries_utms[query_index]
             error = np.linalg.norm((actual_position[0]-best_position[0], actual_position[1]-best_position[1]))
-            logging.debug(error)
             error_m.append(error)
             position_m.append(actual_position)
         process_results_simulation(error_m, args.save_dir)
