@@ -279,10 +279,11 @@ def test(args, eval_ds, model, model_db=None, test_method="hard_resize", pca=Non
             faiss_index = faiss.GpuIndexFlatL2(res, args.features_dim)
         else:
             faiss_index = faiss.IndexFlatL2(args.features_dim)
-        del database_features
+        faiss_index.add(database_features)
         distances, predictions = faiss_index.search(
             queries_features, max(args.recall_values)
         )
+        del database_features
     else:
         distances, predictions = [[] for i in range(len(queries_features))], [[] for i in range(len(queries_features))]
         hard_negatives_per_query = eval_ds.get_hard_negatives()
@@ -290,15 +291,16 @@ def test(args, eval_ds, model, model_db=None, test_method="hard_resize", pca=Non
             faiss_index = faiss.IndexFlatL2(args.features_dim)
             faiss_index.add(database_features[hard_negatives_per_query[query_index]])
             distances_single, local_predictions_single = faiss_index.search(
-                np.expand_dims(queries_features[query_index], axis=0), max(args.recall_values))
+                np.expand_dims(queries_features[query_index], axis=0), max(args.recall_values)
+                )
             # logging.debug(f"distances_single:{distances_single}")
             # logging.debug(f"predictions_single:{predictions_single}")
             distances[query_index] = distances_single
             predictions_single = hard_negatives_per_query[query_index][local_predictions_single]
             predictions[query_index] = predictions_single
-        del database_features
         distances = np.concatenate(distances, axis=0)
         predictions = np.concatenate(predictions, axis=0)
+        del database_features
     if test_method == "nearest_crop":
         distances = np.reshape(distances, (eval_ds.queries_num, 20 * 5))
         predictions = np.reshape(predictions, (eval_ds.queries_num, 20 * 5))
