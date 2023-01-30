@@ -184,7 +184,7 @@ elif args.criterion == "sare_joint":
 
 logging.info(f'Domain adapataion: {args.DA}')
 if args.DA.startswith('DANN'):
-    criterion_DA = torch.nn.NLLLoss()
+    criterion_DA = torch.nn.NLLLoss(reduction='sum')
 
 # Resume model, optimizer, and other training parameters
 if args.resume:
@@ -360,8 +360,8 @@ for epoch_num in range(start_epoch_num, args.epochs_num):
             if args.DA.startswith('DANN'):
                 query_target_label = torch.zeros(query_domain_label.shape[0]).long().to(args.device)
                 database_target_label = torch.ones(database_domain_label.shape[0]).long().to(args.device)
-                loss_DA = criterion_DA(query_domain_label, query_target_label, reduction='sum') + \
-                          criterion_DA(database_domain_label, database_target_label, reduction='sum')
+                loss_DA = criterion_DA(query_domain_label, query_target_label) + \
+                          criterion_DA(database_domain_label, database_target_label)
                 loss_DA /= query_domain_label.shape[0] + database_domain_label.shape[0]
                 loss = loss_triplet + args.lambda_DA * loss_DA
             else:
