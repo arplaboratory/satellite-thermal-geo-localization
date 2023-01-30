@@ -84,6 +84,8 @@ class BaseDataset(data.Dataset):
         # Map name to index
         self.database_name_dict = {}
         self.queries_name_dict = {}
+
+        # Duplicated elements are removed below
         for index, database_image_name in enumerate(database_folder_h5_df["image_name"]):
             self.database_name_dict[database_image_name.decode(
                 "UTF-8")] = index

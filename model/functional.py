@@ -2,6 +2,7 @@
 import math
 import torch
 import torch.nn.functional as F
+from torch.autograd import Function
 
 def sare_ind(query, positive, negative):
     '''all 3 inputs are supposed to be shape 1xn_features'''
@@ -49,7 +50,7 @@ def rmac(x, L=3, eps=1e-6):
     # w2 = math.floor(w/2.0 - 1)
     b = (max(H, W)-w)/(steps-1)
     (tmp, idx) = torch.min(torch.abs(((w**2 - w*b)/w**2)-ovr), 0) # steps(idx) regions for long dimension
-    # region overplus per dimension
+    # regions overplus per dimension
     Wd = 0
     Hd = 0
     if H < W:  
@@ -82,4 +83,17 @@ def rmac(x, L=3, eps=1e-6):
                 v += vt
     return v
 
+class ReverseLayerF(Function):
+
+    @staticmethod
+    def forward(ctx, x, alpha):
+        ctx.alpha = alpha
+
+        return x.view_as(x)
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        output = grad_output.neg() * ctx.alpha
+
+        return output, None
     

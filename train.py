@@ -63,15 +63,12 @@ model = model.to(args.device)
 if args.aggregation in ["netvlad", "crn"]:  # If using NetVLAD layer, initialize it
     if not args.resume:
         train_ds.is_inference = True
-        if args.conv_output_dim is not None:
-            model.aggregation[1].initialize_netvlad_layer(
-                args, train_ds, model.backbone)
-        else:
-            model.aggregation.initialize_netvlad_layer(
+        model.aggregation.initialize_netvlad_layer(
                 args, train_ds, model.backbone)
     args.features_dim *= args.netvlad_clusters
 
 if args.separate_branch:
+    logging.info('Backbone has separated branched for database and query')
     model_db = copy.deepcopy(model)
     model_db = torch.nn.DataParallel(model_db)
     if torch.cuda.device_count() >= 2:
@@ -185,6 +182,10 @@ elif args.criterion == "sare_ind":
 elif args.criterion == "sare_joint":
     criterion_triplet = sare_joint
 
+logging.info(f'Domain adapataion: {args.DA}')
+if args.DA.startswith('DANN'):
+    criterion_DA = torch.nn.NLLLoss()
+
 # Resume model, optimizer, and other training parameters
 if args.resume:
     if args.aggregation != "crn":
@@ -227,8 +228,11 @@ if args.backbone.startswith("vit"):
 else:
     model = model.eval()
     logging.info(
-        f"Output dimension of the model is {args.features_dim}, with {util.get_flops(model, args.resize)}"
+        f"Output dimension of the model is {args.features_dim}"
     )
+    # logging.info(
+    #     f"Output dimension of the model is {args.features_dim}, with {util.get_flops(model, args.resize)}"
+    # )
 
 # Training loop
 for epoch_num in range(start_epoch_num, args.epochs_num):
@@ -236,7 +240,10 @@ for epoch_num in range(start_epoch_num, args.epochs_num):
 
     epoch_start_time = datetime.now()
     epoch_losses = np.zeros((0, 1), dtype=np.float32)
-
+    epoch_triplet_losses = np.zeros((0, 1), dtype=np.float32)
+    if args.DA != 'none':
+        alpha = 2. / (1. + np.exp(-10 * epoch_num)) - 1
+        epoch_DA_losses = np.zeros((0, 1), dtype=np.float32)
     # How many loops should an epoch last (default is 5000/1000=5)
     loops_num = math.ceil(args.queries_per_epoch / args.cache_refresh_rate)
     for loop_num in range(loops_num):
@@ -284,14 +291,26 @@ for epoch_num in range(start_epoch_num, args.epochs_num):
                 database_images_index = np.setdiff1d(images_index, query_images_index, assume_unique=True)
                 query_images = images[query_images_index]
                 database_images = images[database_images_index]
-                database_feature = model_db(database_images.to(args.device))
-                query_feature = model(query_images.to(args.device))
+                if args.DA.startswith('DANN'):
+                    database_feature, database_domain_label = model_db(database_images.to(args.device), train=True, alpha=alpha)
+                    query_feature, query_domain_label = model(query_images.to(args.device), train=True, alpha=alpha)
+                else:
+                    database_feature = model_db(database_images.to(args.device), train=True)
+                    query_feature = model(query_images.to(args.device), train=True)
                 features = torch.empty((len(images), query_feature.shape[1])).to(args.device)
                 features[query_images_index] = query_feature
                 features[database_images_index] = database_feature
                 del database_feature, query_feature
             else:
-                features = model(images.to(args.device))
+                if args.DA.startswith('DANN'):
+                    images_index = np.arange(0, len(images))
+                    features, domain_label = model(images.to(args.device), train=True)
+                    query_images_index = np.arange(0, len(images), 1 + 1 + args.negs_num_per_query)
+                    database_images_index = np.setdiff1d(images_index, query_images_index, assume_unique=True)
+                    database_domain_label = domain_label[database_images_index]
+                    query_domain_label = domain_label[query_images_index]
+                else:
+                    features = model(images.to(args.device), train=True)
             loss_triplet = 0
 
             if args.criterion == "triplet":
@@ -338,27 +357,51 @@ for epoch_num in range(start_epoch_num, args.epochs_num):
             del features
             loss_triplet /= args.train_batch_size * args.negs_num_per_query
 
+            if args.DA.startswith('DANN'):
+                query_target_label = torch.zeros(query_domain_label.shape[0]).long().to(args.device)
+                database_target_label = torch.ones(database_domain_label.shape[0]).long().to(args.device)
+                loss_DA = criterion_DA(query_domain_label, query_target_label, reduction='sum') + \
+                          criterion_DA(database_domain_label, database_target_label, reduction='sum')
+                loss_DA /= query_domain_label.shape[0] + database_domain_label.shape[0]
+                loss = loss_triplet + args.lambda_DA * loss_DA
+            else:
+                loss = loss_triplet
+
             optimizer.zero_grad()
-            loss_triplet.backward()
+            loss.backward()
             optimizer.step()
 
             # Keep track of all losses by appending them to epoch_losses
-            batch_loss = loss_triplet.item()
+            triplet_loss = loss_triplet.item()
+            batch_loss = loss.item()
+            epoch_triplet_losses = np.append(epoch_triplet_losses, triplet_loss)
             epoch_losses = np.append(epoch_losses, batch_loss)
-            del loss_triplet
+            if args.DA != 'none':
+                DA_loss = loss_DA.item()
+                epoch_DA_losses = np.append(epoch_DA_losses, DA_loss)
+            del loss
 
-        logging.debug(
-            f"Epoch[{epoch_num:02d}]({loop_num}/{loops_num}): "
-            + f"current batch triplet loss = {batch_loss:.4f}, "
-            + f"average epoch triplet loss = {epoch_losses.mean():.4f}"
-        )
+        debug_str = f"Epoch[{epoch_num:02d}]({loop_num}/{loops_num}): "+ \
+            f"current batch sum loss = {batch_loss:.4f}, "+ \
+            f"average epoch sum loss = {epoch_losses.mean():.4f}, "+ \
+            f"current batch triplet loss = {triplet_loss:.4f}, "+ \
+            f"average epoch triplet loss = {epoch_triplet_losses.mean():.4f}, "
+
+        if args.DA != 'none':
+            debug_str+= f"current batch DA loss = {DA_loss:.4f}, "+ \
+            f"average epoch DA loss = {epoch_DA_losses.mean():.4f}, "
+
+        logging.debug(debug_str)
     
     del triplets_dl
     
-    logging.info(
-        f"Finished epoch {epoch_num:02d} in {str(datetime.now() - epoch_start_time)[:-7]}, "
-        f"average epoch triplet loss = {epoch_losses.mean():.4f}"
-    )
+    info_str = f"Finished epoch {epoch_num:02d} in {str(datetime.now() - epoch_start_time)[:-7]}, "+ \
+        f"average epoch sum loss = {epoch_losses.mean():.4f}, "+ \
+        f"average epoch triplet loss = {epoch_triplet_losses.mean():.4f}, "
+    if args.DA != 'none':
+        info_str += f"average epoch DA loss = {epoch_DA_losses.mean():.4f}, "
+
+    logging.info(info_str)
 
     # Compute recalls on validation set
     if args.separate_branch:

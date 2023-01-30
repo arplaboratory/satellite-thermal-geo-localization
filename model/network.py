@@ -13,6 +13,7 @@ from model.aggregation import Flatten
 from model.normalization import L2Norm
 import model.aggregation as aggregation
 from model.non_local import NonLocalBlock
+from model.functional import ReverseLayerF
 
 # Pretrained models on Google Landmarks v2 and Places 365
 PRETRAINED_MODELS = {
@@ -36,6 +37,7 @@ class GeoLocalizationNet(nn.Module):
         self.arch_name = args.backbone
         self.aggregation = get_aggregation(args)
         self.self_att = False
+        self.DA = args.DA
 
         if args.aggregation in ["gem", "spoc", "mac", "rmac"]:
             if args.l2 == "before_pool":
@@ -57,12 +59,10 @@ class GeoLocalizationNet(nn.Module):
             actual_conv_output_dim = int(args.conv_output_dim / args.netvlad_clusters)
             logging.debug(f"Last conv layer dim: {actual_conv_output_dim}")
             if args.add_bn:
-                conv_layer = nn.Sequential(nn.Conv2d(args.features_dim, actual_conv_output_dim, 1, bias=False),
-                                           nn.BatchNorm2d(actual_conv_output_dim),)
+                self.conv_layer = nn.Sequential(nn.Conv2d(args.features_dim, actual_conv_output_dim, 1, bias=False),
+                                                nn.BatchNorm2d(actual_conv_output_dim),)
             else:
-                conv_layer = nn.Conv2d(args.features_dim, actual_conv_output_dim, 1)
-            self.aggregation = nn.Sequential(conv_layer,
-                                             self.aggregation)
+                self.conv_layer = nn.Conv2d(args.features_dim, actual_conv_output_dim, 1)
             args.features_dim = actual_conv_output_dim
 
         if args.non_local:
@@ -71,15 +71,42 @@ class GeoLocalizationNet(nn.Module):
             self.non_local = nn.Sequential(*non_local_list)
             self.self_att = True
 
-    def forward(self, x):
+        if self.DA == 'DANN_before':
+            # Input dim = backbone_output_dim * H * W
+            self.domain_classifier = nn.Sequential(nn.Linear(args.features_dim * 32 * 32, 1000, bias=False),
+                                                   nn.BatchNorm1d(1000),
+                                                   nn.ReLU(True),
+                                                   nn.Linear(1000, 2),
+                                                   nn.LogSoftmax(dim=1))
+        elif self.DA == 'DANN_after':
+            self.domain_classifier = nn.Sequential(nn.Linear(args.conv_output_dim, 100, bias=False),
+                                                   nn.BatchNorm1d(100),
+                                                   nn.ReLU(True),
+                                                   nn.Linear(100, 2),
+                                                   nn.LogSoftmax(dim=1))
+
+
+    def forward(self, x, train=False, alpha=1.0):
         x = self.backbone(x)
         if self.self_att:
             x = self.non_local(x)
         if self.arch_name.startswith("vit"):
             x = x.last_hidden_state[:, 0, :]
             return x
-        x = self.aggregation(x)
-        return x
+        if hasattr(self, "conv_layer"):
+            x = self.conv_layer(x)
+        x_after = self.aggregation(x)
+        if train is True:
+            if self.DA == 'none':
+                return x_after
+            elif self.DA == 'DANN_before':
+                reverse_x = ReverseLayerF.apply(x.view(x.shape[0], -1), alpha)
+                domain_label = self.domain_classifier(reverse_x)
+            elif self.DA == 'DANN_after':
+                reverse_x = ReverseLayerF.apply(x_after.view(x_after.shape[0], -1), alpha)
+                domain_label = self.domain_classifier(reverse_x)
+            return x_after, domain_label
+        return x_after
 
 
 def get_aggregation(args):

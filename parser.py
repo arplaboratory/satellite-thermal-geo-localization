@@ -10,6 +10,19 @@ def parse_arguments():
     )
     # Training parameters
     parser.add_argument(
+        "--lambda_DA",
+        type=float,
+        default=1.0,
+        help="Domain adaptation loss weight"
+    )
+    parser.add_argument(
+        "--DA",
+        type=str,
+        default='none',
+        choices=['none', 'DANN_before', 'DANN_after'],
+        help="Domain adaptation"
+    )
+    parser.add_argument(
         "--add_bn",
         action="store_true",
         help="Add bn to compression layers"
@@ -33,7 +46,7 @@ def parse_arguments():
     parser.add_argument(
         "--use_best_n",
         type=int,
-        default=4,
+        default=1,
         help="Calculate the position from weighted averaged best n. If n = 1, then it is equivalent to top 1"
     )
     parser.add_argument(
