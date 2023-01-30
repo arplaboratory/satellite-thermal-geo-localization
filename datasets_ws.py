@@ -24,6 +24,15 @@ base_transform = transforms.Compose(
     ]
 )
 
+# Translation has different normalization for tanh activation
+base_translation_transform = transforms.Compose(
+    [
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[
+                             0.5, 0.5, 0.5]),
+    ]
+)
+
 
 def path_to_pil_img(path):
     return Image.open(path).convert("RGB")
@@ -830,6 +839,7 @@ class TripletsDataset(BaseDataset):
         self.triplets_global_indexes = torch.tensor(
             self.triplets_global_indexes)
 
+
 class RAMEfficient2DMatrix:
     """This class behaves similarly to a numpy.ndarray initialized
     with np.zeros(), but is implemented to save RAM when the rows
@@ -882,3 +892,129 @@ class RAMEfficient2DMatrixGPU:
             return torch.stack([self.matrix[i] for i in index])
         else:
             return self.matrix[index]
+
+class TranslationDataset(BaseDataset):
+    """Dataset used for training, it is used to compute the pairs
+    for image-to-image translation training.
+    If is_inference == True, uses methods of the parent class BaseDataset.
+    """
+
+    def __init__(
+        self,
+        args,
+        datasets_folder="datasets",
+        dataset_name="pitts30k",
+        split="train",
+    ):
+        super().__init__(args, datasets_folder, dataset_name, split)
+        self.is_inference = False
+
+        identity_transform = transforms.Lambda(lambda x: x)
+        self.resized_transform = transforms.Compose(
+            [
+                transforms.Resize(self.resize)
+                if self.resize is not None
+                else identity_transform,
+                base_translation_transform,
+            ]
+        )
+
+        self.query_transform = self.resized_transform
+        self.database_transform = self.resized_transform
+
+        # Find hard_positives_per_query, which are within train_positives_dist_threshold (0.1 meters)
+        knn = NearestNeighbors(n_jobs=-1)
+        knn.fit(self.database_utms)
+        self.hard_positives_per_query = list(
+            knn.radius_neighbors(
+                self.queries_utms,
+                radius=0.1,  # 0.1 meters
+                return_distance=False,
+            )
+        )
+
+        # Some queries might have no positive, we should remove those queries.
+        queries_without_any_hard_positive = np.where(
+            np.array([len(p)
+                     for p in self.hard_positives_per_query], dtype=object) == 0
+        )[0]
+        if len(queries_without_any_hard_positive) != 0:
+            logging.info(
+                f"There are {len(queries_without_any_hard_positive)} queries without any positives "
+                + "within the training set. They won't be considered as they're useless for training."
+            )
+        # Remove queries without positives
+        self.hard_positives_per_query = np.delete(
+            self.hard_positives_per_query, queries_without_any_hard_positive
+        )
+        self.queries_paths = np.delete(
+            self.queries_paths, queries_without_any_hard_positive
+        )
+
+        # Recompute images_paths and queries_num because some queries might have been removed
+        self.images_paths = list(self.database_paths) + \
+            list(self.queries_paths)
+        self.queries_num = len(self.queries_paths)
+
+    def __getitem__(self, index):
+        # Init
+        if self.database_folder_h5_df is None:
+            self.database_folder_h5_df = h5py.File(
+                self.database_folder_h5_path, "r")
+            self.queries_folder_h5_df = h5py.File(
+                self.queries_folder_h5_path, "r")
+
+        query_index, best_positive_index = torch.split(
+            self.pairs_global_indexes[index], (1, 1)
+        )
+
+        query = self.query_transform(
+            self._find_img_in_h5(query_index, "queries"))
+        positive = self.database_transform(
+            self._find_img_in_h5(best_positive_index, "database")
+        )
+        images = torch.stack((query, positive), 0)
+        pairs_local_indexes = torch.tensor([0, 1], dtype=torch.int)
+        return images, pairs_local_indexes, self.pairs_global_indexes[index]
+
+    def __len__(self):
+        if self.is_inference:
+            # At inference time return the number of images. This is used for caching or computing NetVLAD's clusters
+            return super().__len__()
+        else:
+            return len(self.pairs_global_indexes)
+    
+    def compute_pairs(self, args):
+        self.is_inference = True
+        self.compute_pairs_random(args)
+
+    def get_best_positive_index(self, query_index):
+        best_positive_index = self.hard_positives_per_query[query_index][0].item()
+        return best_positive_index
+
+    def compute_pairs_random(self, args):
+        self.pairs_global_indexes = []
+        # Take 1000 random queries
+        sampled_queries_indexes = np.random.choice(
+            self.queries_num, args.cache_refresh_rate, replace=False
+        )
+        # Take all the positives
+        positives_indexes = [
+            self.hard_positives_per_query[i] for i in sampled_queries_indexes
+        ]
+        positives_indexes = [
+            p for pos in positives_indexes for p in pos
+        ]  # Flatten list of lists to a list
+        positives_indexes = list(np.unique(positives_indexes))
+
+        # Compute the cache only for queries and their positives, in order to find the best positive
+
+        # This loop's iterations could be done individually in the __getitem__(). This way is slower but clearer (and yields same results)
+        for query_index in tqdm(sampled_queries_indexes, ncols=100):
+            best_positive_index = self.get_best_positive_index(query_index)
+            self.pairs_global_indexes.append(
+                (query_index, best_positive_index)
+            )
+
+        # self.pairs_global_indexes is a tensor of shape [1000, 2]
+        self.pairs_global_indexes = torch.tensor(self.pairs_global_indexes)

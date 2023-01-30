@@ -80,16 +80,16 @@ class GeoLocalizationNet(nn.Module):
                                                     nn.Linear(1000, 2),
                                                     nn.LogSoftmax(dim=1))
             elif self.DA == 'DANN_before_conv':
-                self.domain_classifier = nn.Sequential(nn.Conv2D(args.features_dim, args.features_dim * 2, kernel_size=4, stride=2, bias=False),
+                self.domain_classifier = nn.Sequential(nn.Conv2d(args.features_dim, args.features_dim * 2, kernel_size=4, stride=2, bias=False),
                                                     nn.BatchNorm2d(args.feature_dim),
                                                     nn.ReLU(True),
-                                                    nn.Conv2D(args.features_dim * 2, args.features_dim * 4, kernel_size=4, stride=2, bias=False),
+                                                    nn.Conv2d(args.features_dim * 2, args.features_dim * 4, kernel_size=4, stride=2, bias=False),
                                                     nn.BatchNorm2d(args.feature_dim * 2),
                                                     nn.ReLU(True),
-                                                    nn.Conv2D(args.features_dim * 4, args.features_dim * 8, kernel_size=4, stride=2, bias=False),
+                                                    nn.Conv2d(args.features_dim * 4, args.features_dim * 8, kernel_size=4, stride=2, bias=False),
                                                     nn.BatchNorm2d(args.feature_dim * 4),
                                                     nn.ReLU(True),
-                                                    nn.Conv2D(args.features_dim * 8, 2, kernel_size=4),
+                                                    nn.Conv2d(args.features_dim * 8, 2, kernel_size=4),
                                                     nn.LogSoftmax(dim=1))
         elif self.DA == 'DANN_after':
             self.domain_classifier = nn.Sequential(nn.Linear(args.conv_output_dim, 100, bias=False),
