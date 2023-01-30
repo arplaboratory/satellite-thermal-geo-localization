@@ -48,16 +48,16 @@ train_ds = datasets_ws.TranslationDataset(
 
 logging.info(f"Train query set: {train_ds}")
 
-val_ds = datasets_ws.BaseDataset(
+val_ds = datasets_ws.TranslationDataset(
     args, args.datasets_folder, args.dataset_name, "val")
 logging.info(f"Val set: {val_ds}")
 
-test_ds = datasets_ws.BaseDataset(
+test_ds = datasets_ws.TranslationDataset(
     args, args.datasets_folder, args.dataset_name, "test")
 logging.info(f"Test set: {test_ds}")
 
 # Initialize model
-model = UNet(3, 3)
+model = UNet(3, 1)
 model = model.to(args.device)
 
 model = torch.nn.DataParallel(model)
@@ -76,22 +76,22 @@ elif args.optim == "sgd":
 else:
     raise NotImplementedError()
 
-criterion_pairs = nn.MSELoss()
+criterion_pairs = nn.SmoothL1Loss()
     
 # Resume model, optimizer, and other training parameters
 if args.resume:
     (
         model,
         optimizer,
-        best_r5,
+        best_psnr,
         start_epoch_num,
         not_improved_num,
     ) = util.resume_train(args, model, optimizer)
     logging.info(
-        f"Resuming from epoch {start_epoch_num} with best recall@5 {best_r5:.1f}"
+        f"Resuming from epoch {start_epoch_num} with best PSNR {best_psnr:.1f}"
     )
 else:
-    best_r5 = start_epoch_num = not_improved_num = 0
+    best_psnr = start_epoch_num = not_improved_num = 0
 
 model = model.eval()
 logging.info(
@@ -169,11 +169,11 @@ for epoch_num in range(start_epoch_num, args.epochs_num):
 
     logging.info(info_str)
 
-    # Compute recalls on validation set
-    recalls, recalls_str = test.test(args, val_ds, model)
-    logging.info(f"Recalls on val set {val_ds}: {recalls_str}")
+    # Compute rPSNR on validation set
+    psnr, psnr_str = test.test_translation(args, val_ds, model)
+    logging.info(f"PSNR on val set {val_ds}: {psnr_str}")
 
-    is_best = recalls[1] > best_r5
+    is_best = psnr > best_psnr
 
     # Save checkpoint, which contains all training parameters
     util.save_checkpoint(
@@ -182,25 +182,25 @@ for epoch_num in range(start_epoch_num, args.epochs_num):
             "epoch_num": epoch_num,
             "model_state_dict": model.state_dict(),
             "optimizer_state_dict": optimizer.state_dict(),
-            "recalls": recalls,
-            "best_r5": best_r5,
+            "psnr": psnr,
+            "best_psnr": best_psnr,
             "not_improved_num": not_improved_num,
         },
         is_best,
         filename="last_model.pth",
     )
 
-    # If recall@5 did not improve for "many" epochs, stop training
+    # If PSNR did not improve for "many" epochs, stop training
     if is_best:
         logging.info(
-            f"Improved: previous best R@5 = {best_r5:.1f}, current R@5 = {recalls[1]:.1f}"
+            f"Improved: previous best PSNR = {best_psnr:.1f}, current PSNR = {psnr:.1f}"
         )
-        best_r5 = recalls[1]
+        best_psnr = psnr
         not_improved_num = 0
     else:
         not_improved_num += 1
         logging.info(
-            f"Not improved: {not_improved_num} / {args.patience}: best R@5 = {best_r5:.1f}, current R@5 = {recalls[1]:.1f}"
+            f"Not improved: {not_improved_num} / {args.patience}: best PSNR = {best_psnr:.1f}, current PSNR = {psnr:.1f}"
         )
         if not_improved_num >= args.patience:
             logging.info(
@@ -209,7 +209,7 @@ for epoch_num in range(start_epoch_num, args.epochs_num):
             break
 
 
-logging.info(f"Best R@5: {best_r5:.1f}")
+logging.info(f"Best PSNR: {best_psnr:.1f}")
 logging.info(
     f"Trained for {epoch_num+1:02d} epochs, in total in {str(datetime.now() - start_time)[:-7]}"
 )
@@ -220,7 +220,7 @@ best_model_state_dict = torch.load(join(args.save_dir, "best_model.pth"))[
 ]
 model.load_state_dict(best_model_state_dict)
 
-recalls, recalls_str = test.test_translation(
-    args, test_ds, model, model_db=model, test_method=args.test_method)
+psnr, psnr_str = test.test_translation(
+    args, test_ds, model)
         
-logging.info(f"Recalls on {test_ds}: {recalls_str}")
+logging.info(f"PSNR on {test_ds}: {psnr_str}")
