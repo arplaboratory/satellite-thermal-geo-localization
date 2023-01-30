@@ -8,7 +8,6 @@ def parse_arguments():
         description="Benchmarking Visual Geolocalization",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    # Training parameters
     parser.add_argument(
         "--lambda_DA",
         type=float,
@@ -19,7 +18,7 @@ def parse_arguments():
         "--DA",
         type=str,
         default='none',
-        choices=['none', 'DANN_before', 'DANN_after'],
+        choices=['none', 'DANN_before', 'DANN_after', 'DANN_before_conv'],
         help="Domain adaptation"
     )
     parser.add_argument(
