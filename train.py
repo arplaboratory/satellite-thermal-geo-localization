@@ -242,7 +242,8 @@ for epoch_num in range(start_epoch_num, args.epochs_num):
     epoch_losses = np.zeros((0, 1), dtype=np.float32)
     epoch_triplet_losses = np.zeros((0, 1), dtype=np.float32)
     if args.DA != 'none':
-        alpha = 2. / (1. + np.exp(-10 * epoch_num)) - 1
+        p = epoch_num / args.epochs_num # p in [0, 1)
+        alpha = 2. / (1. + np.exp(-10 * p)) - 1
         epoch_DA_losses = np.zeros((0, 1), dtype=np.float32)
     # How many loops should an epoch last (default is 5000/1000=5)
     loops_num = math.ceil(args.queries_per_epoch / args.cache_refresh_rate)
