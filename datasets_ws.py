@@ -989,7 +989,7 @@ class TranslationDataset(BaseDataset):
         self.compute_pairs_random(args)
 
     def get_best_positive_index(self, query_index):
-        best_positive_index = self.hard_positives_per_query[query_index][0].item()
+        best_positive_index = self.hard_positives_per_query[query_index].item()
         return best_positive_index
 
     def compute_pairs_random(self, args):
@@ -998,19 +998,8 @@ class TranslationDataset(BaseDataset):
         sampled_queries_indexes = np.random.choice(
             self.queries_num, args.cache_refresh_rate, replace=False
         )
-        # Take all the positives
-        positives_indexes = [
-            self.hard_positives_per_query[i] for i in sampled_queries_indexes
-        ]
-        positives_indexes = [
-            p for pos in positives_indexes for p in pos
-        ]  # Flatten list of lists to a list
-        positives_indexes = list(np.unique(positives_indexes))
-
-        # Compute the cache only for queries and their positives, in order to find the best positive
-
         # This loop's iterations could be done individually in the __getitem__(). This way is slower but clearer (and yields same results)
-        for query_index in tqdm(sampled_queries_indexes, ncols=100):
+        for query_index in sampled_queries_indexes:
             best_positive_index = self.get_best_positive_index(query_index)
             self.pairs_global_indexes.append(
                 (query_index, best_positive_index)
