@@ -18,8 +18,6 @@ from datetime import datetime
 import torchvision.transforms as transforms
 from torch.utils.data.dataloader import DataLoader
 import copy
-import wandb
-from uuid import uuid4
 
 torch.backends.cudnn.benchmark = True  # Provides a speedup
 
@@ -30,12 +28,11 @@ start_time = datetime.now()
 args.save_dir = join(
     "logs",
     args.save_dir,
-    f"{args.dataset_name}-{start_time.strftime('%Y-%m-%d_%H-%M-%S')}-{uuid4()}",
+    f"{args.dataset_name}-{start_time.strftime('%Y-%m-%d_%H-%M-%S')}",
 )
 commons.setup_logging(args.save_dir)
 commons.make_deterministic(args.seed)
 logging.info(f"Arguments: {args}")
-wandb.init(project="VTL", entity="xjh19971", config=vars(args))
 logging.info(f"The outputs are being saved in {args.save_dir}")
 logging.info(
     f"Using {torch.cuda.device_count()} GPUs and {multiprocessing.cpu_count()} CPUs"
