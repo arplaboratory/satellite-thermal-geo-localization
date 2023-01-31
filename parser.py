@@ -10,7 +10,7 @@ def parse_arguments():
     )
     parser.add_argument(
         "--DA_only_positive",
-        action=store_true,
+        action="store_true",
         help="Domain adaptation only applys to positive database"
     )
     parser.add_argument(
