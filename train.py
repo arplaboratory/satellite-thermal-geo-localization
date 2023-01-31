@@ -327,7 +327,7 @@ for epoch_num in range(start_epoch_num, args.epochs_num):
                     database_images_index = np.setdiff1d(images_index, query_images_index, assume_unique=True)
                     positive_images_index = np.arange(1, len(images), 1 + 1 + args.negs_num_per_query)
                     if args.DA_only_positive:
-                        database_domain_label = domain_label[database_images_index]
+                        database_domain_label = domain_label[positive_images_index]
                     else:
                         database_domain_label = domain_label[database_images_index]
                     query_domain_label = domain_label[query_images_index]
