@@ -107,4 +107,4 @@ def calculate_psnr(img1, img2):
     mse = np.mean((img1 - img2)**2)
     if mse == 0:
         return float('inf')
-    return 20 * math.log10(255.0 / math.sqrt(mse))
+    return 20 * math.log10(1.0 / math.sqrt(mse))

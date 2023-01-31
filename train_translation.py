@@ -43,8 +43,7 @@ logging.debug(
 
 train_ds = None
 train_ds = datasets_ws.TranslationDataset(
-    args, args.datasets_folder, args.dataset_name, "train"
-)
+    args, args.datasets_folder, args.dataset_name, "train")
 
 logging.info(f"Train query set: {train_ds}")
 
@@ -117,9 +116,6 @@ for epoch_num in range(start_epoch_num, args.epochs_num):
         train_ds.compute_pairs(args)
         train_ds.is_inference = False
 
-        if args.use_faiss_gpu:
-            torch.cuda.empty_cache()
-
         pairs_dl = DataLoader(
             dataset=train_ds,
             num_workers=args.num_workers,
@@ -139,7 +135,7 @@ for epoch_num in range(start_epoch_num, args.epochs_num):
             query_images_index = np.arange(0, len(images), 1 + 1)
             images_index = np.arange(0, len(images))
             database_images_index = np.setdiff1d(images_index, query_images_index, assume_unique=True)
-            query_images = images[query_images_index]
+            query_images = images[query_images_index, 0, :, :].unsqueeze(1) # Grayscale only use the first channel
             database_images = images[database_images_index]
             output_images = model(database_images.to(args.device))
 
