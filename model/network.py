@@ -72,16 +72,17 @@ class GeoLocalizationNet(nn.Module):
             self.non_local = nn.Sequential(*non_local_list)
             self.self_att = True
 
+    def create_domain_classifier(self, args):
         if self.DA.startswith('DANN_before'):
             # Input dim = backbone_output_dim * H * W
             if self.DA == 'DANN_before':
-                self.domain_classifier = nn.Sequential(nn.Linear(args.features_dim * 32 * 32, 1000, bias=False),
+                domain_classifier = nn.Sequential(nn.Linear(args.features_dim * 32 * 32, 1000, bias=False),
                                                     nn.BatchNorm1d(1000),
                                                     nn.ReLU(True),
                                                     nn.Linear(1000, 2),
                                                     nn.LogSoftmax(dim=1))
             elif self.DA == 'DANN_before_conv':
-                self.domain_classifier = nn.Sequential(nn.Conv2d(args.features_dim, args.features_dim * 2, kernel_size=4, stride=2, bias=False),
+                domain_classifier = nn.Sequential(nn.Conv2d(args.features_dim, args.features_dim * 2, kernel_size=4, stride=2, bias=False),
                                                     nn.BatchNorm2d(args.features_dim * 2),
                                                     nn.ReLU(True),
                                                     nn.Conv2d(args.features_dim * 2, args.features_dim * 4, kernel_size=4, stride=2, bias=False),
@@ -93,11 +94,12 @@ class GeoLocalizationNet(nn.Module):
                                                     nn.Conv2d(args.features_dim * 8, 2, kernel_size=4),
                                                     nn.LogSoftmax(dim=1))
         elif self.DA == 'DANN_after':
-            self.domain_classifier = nn.Sequential(nn.Linear(args.conv_output_dim, 100, bias=False),
+            domain_classifier = nn.Sequential(nn.Linear(args.conv_output_dim, 100, bias=False),
                                                    nn.BatchNorm1d(100),
                                                    nn.ReLU(True),
                                                    nn.Linear(100, 2),
                                                    nn.LogSoftmax(dim=1))
+        return domain_classifier
 
 
     def forward(self, x, train=False, alpha=1.0):
@@ -118,11 +120,9 @@ class GeoLocalizationNet(nn.Module):
                     reverse_x = ReverseLayerF.apply(x.view(x.shape[0], -1), alpha)
                 elif self.DA == 'DANN_before_conv':
                     reverse_x = ReverseLayerF.apply(x, alpha)
-                domain_label = self.domain_classifier(reverse_x)
             elif self.DA == 'DANN_after':
                 reverse_x = ReverseLayerF.apply(x_after.view(x_after.shape[0], -1), alpha)
-                domain_label = self.domain_classifier(reverse_x)
-            return x_after, domain_label
+            return x_after, reverse_x
         return x_after
 
 

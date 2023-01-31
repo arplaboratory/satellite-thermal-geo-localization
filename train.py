@@ -18,6 +18,8 @@ from datetime import datetime
 import torchvision.transforms as transforms
 from torch.utils.data.dataloader import DataLoader
 import copy
+import wandb
+from uuid import uuid4
 
 torch.backends.cudnn.benchmark = True  # Provides a speedup
 
@@ -28,11 +30,12 @@ start_time = datetime.now()
 args.save_dir = join(
     "logs",
     args.save_dir,
-    f"{args.dataset_name}-{start_time.strftime('%Y-%m-%d_%H-%M-%S')}",
+    f"{args.dataset_name}-{start_time.strftime('%Y-%m-%d_%H-%M-%S')}-{uuid4()}",
 )
 commons.setup_logging(args.save_dir)
 commons.make_deterministic(args.seed)
 logging.info(f"Arguments: {args}")
+wandb.init(project="VTL", entity="xjh19971", config=vars(args))
 logging.info(f"The outputs are being saved in {args.save_dir}")
 logging.info(
     f"Using {torch.cuda.device_count()} GPUs and {multiprocessing.cpu_count()} CPUs"
@@ -59,7 +62,10 @@ logging.info(f"Test set: {test_ds}")
 
 # Initialize model
 model = network.GeoLocalizationNet(args)
-model = model.to(args.device)
+domain_classifier = None
+if args.DA != 'none':
+    domain_classifier = model.create_domain_classifier(args)
+
 if args.aggregation in ["netvlad", "crn"]:  # If using NetVLAD layer, initialize it
     if not args.resume:
         train_ds.is_inference = True
@@ -81,6 +87,12 @@ if torch.cuda.device_count() >= 2:
     # When using more than 1GPU, use sync_batchnorm for torch.nn.DataParallel
     model = convert_model(model)
     model = model.to(args.device)
+
+if domain_classifier is not None:
+    domain_classifier = torch.nn.DataParallel(model)
+    # When using more than 1GPU, use sync_batchnorm for torch.nn.DataParallel
+    domain_classifier = convert_model(domain_classifier)
+    domain_classifier = domain_classifier.to(args.device)
 
 # Setup Optimizer and Loss
 if args.aggregation == "crn":
@@ -293,8 +305,10 @@ for epoch_num in range(start_epoch_num, args.epochs_num):
                 query_images = images[query_images_index]
                 database_images = images[database_images_index]
                 if args.DA.startswith('DANN'):
-                    database_feature, database_domain_label = model_db(database_images.to(args.device), train=True, alpha=alpha)
-                    query_feature, query_domain_label = model(query_images.to(args.device), train=True, alpha=alpha)
+                    database_feature, database_reverse_x = model_db(database_images.to(args.device), train=True, alpha=alpha)
+                    database_domain_label = domain_classifier(database_reverse_x)
+                    query_feature, query_reverse_x = model(query_images.to(args.device), train=True, alpha=alpha)
+                    query_domain_label = domain_classifier(query_reverse_x)
                 else:
                     database_feature = model_db(database_images.to(args.device), train=True)
                     query_feature = model(query_images.to(args.device), train=True)
@@ -305,7 +319,8 @@ for epoch_num in range(start_epoch_num, args.epochs_num):
             else:
                 if args.DA.startswith('DANN'):
                     images_index = np.arange(0, len(images))
-                    features, domain_label = model(images.to(args.device), train=True)
+                    features, reverse_x = model(images.to(args.device), train=True)
+                    domain_label = domain_classifier(reverse_x)
                     query_images_index = np.arange(0, len(images), 1 + 1 + args.negs_num_per_query)
                     database_images_index = np.setdiff1d(images_index, query_images_index, assume_unique=True)
                     database_domain_label = domain_label[database_images_index]
@@ -428,6 +443,27 @@ for epoch_num in range(start_epoch_num, args.epochs_num):
         is_best,
         filename="last_model.pth",
     )
+
+    if args.DA != 'none':
+        wandb.log({
+                "epoch_num": epoch_num,
+                "recall1": recalls[0],
+                "recall5": recalls[1],
+                "best_r5": recalls[1] if is_best else best_r5,
+                "sum_loss": epoch_losses.mean(),
+                "triplet loss": epoch_triplet_losses.mean(),
+                "DA loss": epoch_DA_losses.mean()
+            },)
+    else:
+        wandb.log({
+                "epoch_num": epoch_num,
+                "recall1": recalls[0],
+                "recall5": recalls[1],
+                "best_r5": recalls[1] if is_best else best_r5,
+                "sum_loss": epoch_losses.mean(),
+                "triplet loss": epoch_triplet_losses.mean(),
+                "DA loss": 0
+            },)
 
     # If recall@5 did not improve for "many" epochs, stop training
     if is_best:
