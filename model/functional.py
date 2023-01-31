@@ -3,6 +3,8 @@ import math
 import torch
 import torch.nn.functional as F
 from torch.autograd import Function
+import cv2
+import numpy as np
 
 def sare_ind(query, positive, negative):
     '''all 3 inputs are supposed to be shape 1xn_features'''
@@ -96,4 +98,13 @@ class ReverseLayerF(Function):
         output = grad_output.neg() * ctx.alpha
 
         return output, None
-    
+
+# https://cvnote.ddlee.cc/2019/09/12/psnr-ssim-python
+def calculate_psnr(img1, img2):
+    # img1 and img2 have range [0, 255]
+    img1 = img1.astype(np.float64)
+    img2 = img2.astype(np.float64)
+    mse = np.mean((img1 - img2)**2)
+    if mse == 0:
+        return float('inf')
+    return 20 * math.log10(255.0 / math.sqrt(mse))
