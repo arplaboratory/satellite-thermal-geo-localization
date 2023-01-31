@@ -298,16 +298,15 @@ for epoch_num in range(start_epoch_num, args.epochs_num):
                 # query1 + pos1 + neg1s(neg_num) + query2 + pos2 + neg2(neg_num) + ...
                 # Extract query image
                 query_images_index = np.arange(0, len(images), 1 + 1 + args.negs_num_per_query)
-                positive_images_index = np.arange(1, len(images), 1 + 1 + args.negs_num_per_query)
                 images_index = np.arange(0, len(images))
                 database_images_index = np.setdiff1d(images_index, query_images_index, assume_unique=True)
                 query_images = images[query_images_index]
-                if args.DA_only_positive:
-                    database_images = images[positive_images_index]
-                else:
-                    database_images = images[database_images_index]
+                database_images = images[database_images_index]
                 if args.DA.startswith('DANN'):
                     database_feature, database_reverse_x = model_db(database_images.to(args.device), train=True, alpha=alpha)
+                    positive_images_index_local = np.arange(0, len(images), 1 + args.negs_num_per_query)
+                    if args.DA_only_positive:
+                        database_reverse_x = database_reverse_x[positive_images_index_local]
                     database_domain_label = domain_classifier(database_reverse_x)
                     query_feature, query_reverse_x = model(query_images.to(args.device), train=True, alpha=alpha)
                     query_domain_label = domain_classifier(query_reverse_x)
@@ -321,16 +320,17 @@ for epoch_num in range(start_epoch_num, args.epochs_num):
             else:
                 if args.DA.startswith('DANN'):
                     images_index = np.arange(0, len(images))
-                    features, reverse_x = model(images.to(args.device), train=True)
-                    domain_label = domain_classifier(reverse_x)
                     query_images_index = np.arange(0, len(images), 1 + 1 + args.negs_num_per_query)
                     database_images_index = np.setdiff1d(images_index, query_images_index, assume_unique=True)
                     positive_images_index = np.arange(1, len(images), 1 + 1 + args.negs_num_per_query)
+                    features, reverse_x = model(images.to(args.device), train=True)
                     if args.DA_only_positive:
-                        database_domain_label = domain_label[positive_images_index]
+                        database_reverse_x = reverse_x[positive_images_index]
                     else:
-                        database_domain_label = domain_label[database_images_index]
-                    query_domain_label = domain_label[query_images_index]
+                        database_reverse_x = reverse_x[database_images_index]
+                    query_reverse_x = reverse_x[query_images_index]
+                    database_domain_label = domain_classifier(database_reverse_x)
+                    query_domain_label = domain_classifier(query_reverse_x)
                 else:
                     features = model(images.to(args.device), train=True)
             loss_triplet = 0
@@ -381,7 +381,11 @@ for epoch_num in range(start_epoch_num, args.epochs_num):
 
             if args.DA.startswith('DANN'):
                 query_target_label = torch.zeros(query_domain_label.shape[0]).long().to(args.device)
-                database_target_label = torch.ones(database_domain_label.shape[0]).long().to(args.device)
+                if args.DA_only_positive:
+                    # Positive sample num = query sample num
+                    database_target_label = torch.ones(query_domain_label.shape[0]).long().to(args.device)
+                else:
+                    database_target_label = torch.ones(database_domain_label.shape[0]).long().to(args.device)
                 loss_DA = criterion_DA(query_domain_label, query_target_label) + \
                           criterion_DA(database_domain_label, database_target_label)
                 loss_DA /= query_domain_label.shape[0] + database_domain_label.shape[0]
