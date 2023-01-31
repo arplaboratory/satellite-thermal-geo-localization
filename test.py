@@ -440,7 +440,7 @@ def test_translation(args, eval_ds, model):
         )
 
         all_outputs = np.empty(
-                (len(eval_ds), 3, 512, 512), dtype="float32")
+                (len(eval_ds), 1, 512, 512), dtype="float32")
 
         for inputs, indices in tqdm(database_dataloader, ncols=100):
             output = model(inputs.to(args.device))
@@ -449,13 +449,8 @@ def test_translation(args, eval_ds, model):
             output = np.clip(output, a_max=1, a_min=-1) * 0.5 + 0.5
             all_outputs[indices.numpy(), :] = output
             
-        queries_subset_ds = Subset(
-            eval_ds,
-            list(
-                range(eval_ds.database_num,
-                      eval_ds.database_num + eval_ds.queries_num)
-            ),
-        )
+        queries_subset_ds = Subset(eval_ds, list(range(eval_ds.database_num,
+                      eval_ds.database_num + eval_ds.queries_num)))
         queries_dataloader = DataLoader(
             dataset=queries_subset_ds,
             num_workers=args.num_workers,
@@ -463,8 +458,8 @@ def test_translation(args, eval_ds, model):
             pin_memory=(args.device == "cuda"),
         )
         for inputs, indices in tqdm(queries_dataloader, ncols=100):
-            output = input
-            output = output.cpu().numpy()
+            output = inputs
+            output = output[:, 0, :, :].unsqueeze(1).cpu().numpy()
             # Denormalized
             output = np.clip(output, a_max=1, a_min=-1) * 0.5 + 0.5
             all_outputs[indices.numpy(), :] = output
