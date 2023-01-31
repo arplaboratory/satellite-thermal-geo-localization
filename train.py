@@ -28,7 +28,7 @@ start_time = datetime.now()
 args.save_dir = join(
     "logs",
     args.save_dir,
-    f"{args.dataset_name}-{start_time.strftime('%Y-%m-%d_%H-%M-%S')}-{uuid4()}",
+    f"{args.dataset_name}-{start_time.strftime('%Y-%m-%d_%H-%M-%S')}",
 )
 commons.setup_logging(args.save_dir)
 commons.make_deterministic(args.seed)
