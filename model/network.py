@@ -14,6 +14,7 @@ from model.normalization import L2Norm
 import model.aggregation as aggregation
 from model.non_local import NonLocalBlock
 from model.functional import ReverseLayerF
+from model.unet.unet_model import UNet
 
 # Pretrained models on Google Landmarks v2 and Places 365
 PRETRAINED_MODELS = {
@@ -297,4 +298,16 @@ def get_backbone(args):
 def get_output_channels_dim(model):
     """Return the number of channels in the output of a model."""
     return model(torch.ones([1, 3, 224, 224])).shape[1]
+
+class GenerativeNet(nn.Module):
+    def __init__(self, args, input_channel_num, output_channel_num):
+        super().__init__()
+        if args.generative_net == 'unet':
+            self.model = UNet(input_channel_num, output_channel_num)
+        else:
+            raise KeyError()
+    
+    def forward(self, x):
+        x = self.model(x)
+        return x
 

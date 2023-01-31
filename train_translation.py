@@ -1,5 +1,5 @@
 from model.sync_batchnorm import convert_model
-from model.unet.unet_model import UNet
+from model import network
 import datasets_ws
 import commons
 import parser
@@ -57,7 +57,7 @@ test_ds = datasets_ws.TranslationDataset(
 logging.info(f"Test set: {test_ds}")
 
 # Initialize model
-model = UNet(3, 1)
+model = network.GenerativeNet(3, 1)
 model = model.to(args.device)
 
 model = torch.nn.DataParallel(model)
