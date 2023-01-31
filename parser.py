@@ -9,6 +9,13 @@ def parse_arguments():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument(
+        "--generative_net",
+        type=str,
+        default="none",
+        choices=["none", "unet"],
+        help="Domain adaptation loss weight"
+    )
+    parser.add_argument(
         "--lambda_DA",
         type=float,
         default=1.0,
