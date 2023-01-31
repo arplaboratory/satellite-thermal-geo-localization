@@ -92,6 +92,7 @@ class GeoLocalizationNet(nn.Module):
                                                     nn.BatchNorm2d(args.features_dim * 8),
                                                     nn.ReLU(True),
                                                     nn.Conv2d(args.features_dim * 8, 2, kernel_size=2),
+                                                    nn.Flatten(),
                                                     nn.LogSoftmax(dim=1))
         elif self.DA == 'DANN_after':
             domain_classifier = nn.Sequential(nn.Linear(args.conv_output_dim, 100, bias=False),
