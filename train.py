@@ -62,6 +62,7 @@ logging.info(f"Test set: {test_ds}")
 
 # Initialize model
 model = network.GeoLocalizationNet(args)
+model.to(args.device)
 domain_classifier = None
 if args.DA != 'none':
     domain_classifier = model.create_domain_classifier(args)
@@ -89,7 +90,7 @@ if torch.cuda.device_count() >= 2:
     model = model.to(args.device)
 
 if domain_classifier is not None:
-    domain_classifier = torch.nn.DataParallel(model)
+    domain_classifier = torch.nn.DataParallel(domain_classifier)
     # When using more than 1GPU, use sync_batchnorm for torch.nn.DataParallel
     domain_classifier = convert_model(domain_classifier)
     domain_classifier = domain_classifier.to(args.device)
