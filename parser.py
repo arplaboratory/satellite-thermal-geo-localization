@@ -9,6 +9,11 @@ def parse_arguments():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument(
+        "--DA_only_positive",
+        action=store_true,
+        help="Domain adaptation only applys to positive database"
+    )
+    parser.add_argument(
         "--generative_net",
         type=str,
         default="none",
