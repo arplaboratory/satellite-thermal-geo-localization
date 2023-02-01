@@ -432,7 +432,6 @@ def test_translation(args, eval_ds, model):
     psnr_sum = 0
     psnr_count = 0
     with torch.no_grad():
-        logging.debug("Extracting database features for evaluation/testing")
         # For database use "hard_resize", although it usually has no effect because database images have same resolution
         eval_ds.test_method = "hard_resize"
 
