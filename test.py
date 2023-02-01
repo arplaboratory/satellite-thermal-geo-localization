@@ -11,6 +11,8 @@ from h5_transformer import calc_overlap
 from model.functional import calculate_psnr
 import yaml
 import os
+from PIL import Image
+import datasets_ws
 
 def test_efficient_ram_usage(args, eval_ds, model, test_method="hard_resize"):
     """This function gives the same output as test(), but uses much less RAM.
@@ -427,54 +429,40 @@ def test_translation(args, eval_ds, model):
     """Compute PSNR of the given dataset and compute the recalls."""
 
     model = model.eval()
+    psnr_sum = 0
+    psnr_count = 0
     with torch.no_grad():
         logging.debug("Extracting database features for evaluation/testing")
         # For database use "hard_resize", although it usually has no effect because database images have same resolution
         eval_ds.test_method = "hard_resize"
-        database_subset_ds = Subset(eval_ds, list(range(eval_ds.database_num)))
-        database_dataloader = DataLoader(
-            dataset=database_subset_ds,
+
+        eval_ds.is_inference = True
+        eval_ds.compute_pairs(args)
+        eval_ds.is_inference = False
+
+        eval_dataloader = DataLoader(
+            dataset=eval_ds,
             num_workers=args.num_workers,
-            batch_size=args.infer_batch_size,
+            batch_size=1,
+            collate_fn=datasets_ws.collate_fn,
             pin_memory=(args.device == "cuda"),
         )
 
-        all_outputs = np.empty(
-                (len(eval_ds), 1, 512, 512), dtype="float32")
+        logging.debug("Calculating PSNR")
 
-        for inputs, indices in tqdm(database_dataloader, ncols=100):
-            output = model(inputs.to(args.device))
-            output = output.cpu().numpy()
-            # Denormalized
-            output = np.clip(output, a_max=1, a_min=-1) * 0.5 + 0.5
-            all_outputs[indices.numpy(), :] = output
-            
-        queries_subset_ds = Subset(eval_ds, list(range(eval_ds.database_num,
-                      eval_ds.database_num + eval_ds.queries_num)))
-        queries_dataloader = DataLoader(
-            dataset=queries_subset_ds,
-            num_workers=args.num_workers,
-            batch_size=args.infer_batch_size,
-            pin_memory=(args.device == "cuda"),
-        )
-        for inputs, indices in tqdm(queries_dataloader, ncols=100):
-            output = inputs
-            output = output[:, 0, :, :].unsqueeze(1).cpu().numpy()
-            # Denormalized
-            output = np.clip(output, a_max=1, a_min=-1) * 0.5 + 0.5
-            all_outputs[indices.numpy(), :] = output
+        for images, pairs_local_indexes, _ in tqdm(eval_dataloader, ncols=100):
+            # Compute features of all images (images contains queries, positives and negatives)
+            query_images_index = np.arange(0, len(images), 1 + 1)
+            images_index = np.arange(0, len(images))
+            database_images_index = np.setdiff1d(images_index, query_images_index, assume_unique=True)
+            query_images = images[query_images_index] * 0.5 + 0.5
+            database_images = images[database_images_index]
+            output_images = model(database_images.to(args.device)).cpu()
+            output_images = torch.clip(output_images, min=-1, max=1) * 0.5 + 0.5
+            psnr_sum += calculate_psnr(query_images, output_images)
+            psnr_count += 1
 
-    queries_outputs = all_outputs[eval_ds.database_num:]
-    database_outputs = all_outputs[: eval_ds.database_num]
-        
-    del all_outputs
-
-    logging.debug("Calculating PSNR")
-    
-    psnr_sum = 0
-    for i in range(len(queries_outputs)):
-        psnr_sum += calculate_psnr(queries_outputs[i], database_outputs[i])
-    psnr_sum /= len(queries_outputs)
+    psnr_sum /= psnr_count
 
     psnr_str = f"PSNR: {psnr_sum:.1f}"
             

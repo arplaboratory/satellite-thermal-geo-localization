@@ -56,7 +56,7 @@ test_ds = datasets_ws.TranslationDataset(
 logging.info(f"Test set: {test_ds}")
 
 # Initialize model
-model = network.GenerativeNet(3, 1)
+model = network.GenerativeNet(args, 3, 3)
 model = model.to(args.device)
 
 model = torch.nn.DataParallel(model)
@@ -93,12 +93,6 @@ else:
     best_psnr = start_epoch_num = not_improved_num = 0
 
 model = model.eval()
-logging.info(
-    f"Output dimension of the model is {args.features_dim}"
-)
-# logging.info(
-#     f"Output dimension of the model is {args.features_dim}, with {util.get_flops(model, args.resize)}"
-# )
 
 # Training loop
 for epoch_num in range(start_epoch_num, args.epochs_num):
@@ -130,12 +124,11 @@ for epoch_num in range(start_epoch_num, args.epochs_num):
         # images shape: (train_batch_size*12)*3*H*W ; by default train_batch_size=4, H=512, W=512
         # pairs_local_indexes shape: (train_batch_size*10)*3 ; because 10 pairs per query
         for images, pairs_local_indexes, _ in tqdm(pairs_dl, ncols=100):
-
             # Compute features of all images (images contains queries, positives and negatives)
             query_images_index = np.arange(0, len(images), 1 + 1)
             images_index = np.arange(0, len(images))
             database_images_index = np.setdiff1d(images_index, query_images_index, assume_unique=True)
-            query_images = images[query_images_index, 0, :, :].unsqueeze(1) # Grayscale only use the first channel
+            query_images = images[query_images_index].to(args.device)
             database_images = images[database_images_index]
             output_images = model(database_images.to(args.device))
 
@@ -151,7 +144,6 @@ for epoch_num in range(start_epoch_num, args.epochs_num):
             batch_loss = loss.item()
             epoch_losses = np.append(epoch_losses, batch_loss)
             del loss
-
         debug_str = f"Epoch[{epoch_num:02d}]({loop_num}/{loops_num}): "+ \
             f"current batch sum loss = {batch_loss:.4f}, "+ \
             f"average epoch sum loss = {epoch_losses.mean():.4f}, "
