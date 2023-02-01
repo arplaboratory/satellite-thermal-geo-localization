@@ -61,7 +61,7 @@ logging.info(f"Test set: {test_ds}")
 model = network.GeoLocalizationNet(args)
 model.to(args.device)
 domain_classifier = None
-if args.DA != 'none':
+if args.DA.startswith("DANN"):
     domain_classifier = model.create_domain_classifier(args)
 
 if args.aggregation in ["netvlad", "crn"]:  # If using NetVLAD layer, initialize it
@@ -94,6 +94,8 @@ if domain_classifier is not None:
 
 # Setup Optimizer and Loss
 if args.aggregation == "crn":
+    if domain_classifier is not None:
+        raise NotImplementedError("DA for crn is not Implemented")
     crn_params = list(model.module.aggregation.crn.parameters())
     net_params = list(model.module.backbone.parameters()) + list(
         [
@@ -171,18 +173,26 @@ if args.aggregation == "crn":
 else:
     if args.optim == "adam":
         if args.separate_branch:
-            optimizer = torch.optim.Adam(list(model.parameters()) + list(model_db.parameters()), lr=args.lr, weight_decay=args.weight_decay)
+            if domain_classifier is not None:
+                optimizer = torch.optim.Adam(list(model.parameters()) + list(model_db.parameters()) + list(domain_classifier.parameters()), lr=args.lr, weight_decay=args.weight_decay)
+            else:
+                optimizer = torch.optim.Adam(list(model.parameters()) + list(model_db.parameters()), lr=args.lr, weight_decay=args.weight_decay)
         else:
-            optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+            if domain_classifier is not None:
+                optimizer = torch.optim.Adam(list(model.parameters()) + list(domain_classifier.parameters()), lr=args.lr, weight_decay=args.weight_decay)
+            else:
+                optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     elif args.optim == "sgd":
         if args.separate_branch:
-            optimizer = torch.optim.SGD(
-                list(model.parameters()) + list(model_db.parameters()), lr=args.lr, momentum=0.9, weight_decay=0.001
-            )
+            if domain_classifier is not None:
+                optimizer = torch.optim.SGD(list(model.parameters()) + list(model_db.parameters()) + list(domain_classifier.parameters()), lr=args.lr, momentum=0.9, weight_decay=0.001)
+            else:
+                optimizer = torch.optim.SGD(list(model.parameters()) + list(model_db.parameters()), lr=args.lr, momentum=0.9, weight_decay=0.001)
         else:
-            optimizer = torch.optim.SGD(
-                model.parameters(), lr=args.lr, momentum=0.9, weight_decay=0.001
-            )
+            if domain_classifier is not None:
+                optimizer = torch.optim.SGD(list(model.parameters()) + list(domain_classifier.parameters()), lr=args.lr, momentum=0.9, weight_decay=0.001)
+            else:
+                optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, momentum=0.9, weight_decay=0.001)
 
 if args.criterion == "triplet":
     criterion_triplet = nn.TripletMarginLoss(
@@ -195,6 +205,8 @@ elif args.criterion == "sare_joint":
 logging.info(f'Domain adapataion: {args.DA}')
 if args.DA.startswith('DANN'):
     criterion_DA = torch.nn.NLLLoss(reduction='sum')
+else:
+    raise NotImplementedError()
 
 # Resume model, optimizer, and other training parameters
 if args.resume:
@@ -207,7 +219,7 @@ if args.resume:
                 best_r5,
                 start_epoch_num,
                 not_improved_num,
-            ) = util.resume_train_separate(args, model, model_db, optimizer)
+            ) = util.resume_train_separate(args, model, model_db, optimizer, DA=domain_classifier)
         else:
             (
                 model,
@@ -215,17 +227,17 @@ if args.resume:
                 best_r5,
                 start_epoch_num,
                 not_improved_num,
-            ) = util.resume_train(args, model, optimizer)
+            ) = util.resume_train(args, model, optimizer, DA=domain_classifier)
     else:
         # CRN uses pretrained NetVLAD, then requires loading with strict=False and
         # does not load the optimizer from the checkpoint file.
         if args.separate_branch:
             model, _, best_r5, start_epoch_num, not_improved_num = util.resume_train_separate(
-            args, model, model_db, strict=False
+            args, model, model_db, strict=False, DA=domain_classifier
         )
         else:
             model, _, best_r5, start_epoch_num, not_improved_num = util.resume_train(
-            args, model, strict=False
+            args, model, strict=False, DA=domain_classifier
         )
     logging.info(
         f"Resuming from epoch {start_epoch_num} with best recall@5 {best_r5:.1f}"
@@ -304,7 +316,7 @@ for epoch_num in range(start_epoch_num, args.epochs_num):
                 database_images = images[database_images_index]
                 if args.DA.startswith('DANN'):
                     database_feature, database_reverse_x = model_db(database_images.to(args.device), train=True, alpha=alpha)
-                    positive_images_index_local = np.arange(0, len(images), 1 + args.negs_num_per_query)
+                    positive_images_index_local = np.arange(0, len(database_reverse_x), 1 + args.negs_num_per_query)
                     if args.DA_only_positive:
                         database_reverse_x = database_reverse_x[positive_images_index_local]
                     database_domain_label = domain_classifier(database_reverse_x)
@@ -445,6 +457,7 @@ for epoch_num in range(start_epoch_num, args.epochs_num):
             "epoch_num": epoch_num,
             "model_state_dict": model.state_dict(),
             "model_db_state_dict": model_db.state_dict() if args.separate_branch else None,
+            "DA_state_dict": domain_classifier.state_dict() if domain_classifier is not None else None,
             "optimizer_state_dict": optimizer.state_dict(),
             "recalls": recalls,
             "best_r5": best_r5,

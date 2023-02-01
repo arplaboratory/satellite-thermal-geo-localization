@@ -73,7 +73,7 @@ def resume_model_separate(args, model, model_db):
     model_db.load_state_dict(state_dict_db)
     return model, model_db
 
-def resume_train(args, model, optimizer=None, strict=False):
+def resume_train(args, model, optimizer=None, strict=False, DA=None):
     """Load model, optimizer, and other training parameters"""
     logging.debug(f"Loading checkpoint: {args.resume}")
     checkpoint = torch.load(args.resume)
@@ -81,6 +81,8 @@ def resume_train(args, model, optimizer=None, strict=False):
         raise ValueError("The model is trained separately. You should add separate_branch.")
     start_epoch_num = checkpoint["epoch_num"]
     model.load_state_dict(checkpoint["model_state_dict"], strict=strict)
+    if DA is not None:
+        DA.load_state_dict(checkpoint["DA_state_dict"], strict=strict)
     if optimizer:
         optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
     best_r5 = checkpoint["best_r5"]
@@ -97,13 +99,15 @@ def resume_train(args, model, optimizer=None, strict=False):
         )
     return model, optimizer, best_r5, start_epoch_num, not_improved_num
 
-def resume_train_separate(args, model, model_db, optimizer=None, strict=False):
+def resume_train_separate(args, model, model_db, optimizer=None, strict=False, DA=None):
     """Load model, optimizer, and other training parameters"""
     logging.debug(f"Loading checkpoint: {args.resume}")
     checkpoint = torch.load(args.resume)
     start_epoch_num = checkpoint["epoch_num"]
     model.load_state_dict(checkpoint["model_state_dict"], strict=strict)
     model_db.load_state_dict(checkpoint["model_db_state_dict"], strict=strict)
+    if DA is not None:
+        DA.load_state_dict(checkpoint["DA_state_dict"], strict=strict)
     if optimizer:
         optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
     best_r5 = checkpoint["best_r5"]
