@@ -9,11 +9,16 @@ def parse_arguments():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument(
+        "--G_visual",
+        action="store_true",
+        help="G_visual"
+    )
+    parser.add_argument(
         "--G_activation",
         type=str,
         default="large_tanh",
         choices=["none", "large_tanh", "tanh"],
-        help="Domain adaptation only applys to positive database"
+        help="G_activation"
     )
     parser.add_argument(
         "--DA_only_positive",
@@ -25,7 +30,7 @@ def parse_arguments():
         type=str,
         default="none",
         choices=["none", "unet"],
-        help="Domain adaptation loss weight"
+        help="G_net"
     )
     parser.add_argument(
         "--lambda_DA",

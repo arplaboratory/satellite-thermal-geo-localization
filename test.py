@@ -12,6 +12,7 @@ from model.functional import calculate_psnr
 import yaml
 import os
 from PIL import Image
+import shutil
 import datasets_ws
 
 def test_efficient_ram_usage(args, eval_ds, model, test_method="hard_resize"):
@@ -431,6 +432,10 @@ def test_translation(args, eval_ds, model):
     model = model.eval()
     psnr_sum = 0
     psnr_count = 0
+    if args.G_vis:
+        if os.path.isdir("G_vis"):
+            shutil.rmtree("G_vis")
+        os.mkdir("G_vis")
     with torch.no_grad():
         # For database use "hard_resize", although it usually has no effect because database images have same resolution
         eval_ds.test_method = "hard_resize"
@@ -458,6 +463,9 @@ def test_translation(args, eval_ds, model):
             database_images = images[database_images_index]
             output_images = model(database_images.to(args.device)).cpu()
             output_images = torch.clip(output_images, min=-1, max=1) * 0.5 + 0.5
+            if args.G_vis:
+                vis_image = transforms.ToPILImage()(output_images)
+                vis_image.save(f"G_{psnr_count}.jpg")
             psnr_sum += calculate_psnr(query_images, output_images)
             psnr_count += 1
 
