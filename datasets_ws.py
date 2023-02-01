@@ -919,9 +919,6 @@ class TranslationDataset(BaseDataset):
             ]
         )
 
-        self.query_transform = self.resized_transform
-        self.database_transform = self.resized_transform
-
         # Find hard_positives_per_query, which are within train_positives_dist_threshold (0.1 meters)
         knn = NearestNeighbors(n_jobs=-1)
         knn.fit(self.database_utms)
@@ -968,9 +965,9 @@ class TranslationDataset(BaseDataset):
             self.pairs_global_indexes[index], (1, 1)
         )
 
-        query = self.query_transform(
+        query = self.resized_transform(
             self._find_img_in_h5(query_index, "queries"))
-        positive = self.database_transform(
+        positive = self.resized_transform(
             self._find_img_in_h5(best_positive_index, "database")
         )
         images = torch.stack((query, positive), 0)
