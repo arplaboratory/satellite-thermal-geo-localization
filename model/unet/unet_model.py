@@ -5,11 +5,12 @@ from .unet_parts import *
 
 
 class UNet(nn.Module):
-    def __init__(self, n_channels, n_classes, bilinear=False):
+    def __init__(self, n_channels, n_classes, bilinear=False, activation='large_tanh'):
         super(UNet, self).__init__()
         self.n_channels = n_channels
         self.n_classes = n_classes
         self.bilinear = bilinear
+        self.activation = activation
 
         self.inc = (DoubleConv(n_channels, 64))
         self.down1 = (Down(64, 128))
@@ -35,5 +36,10 @@ class UNet(nn.Module):
         x = self.up3(x, x2)
         x = self.up4(x, x1)
         x = self.outc(x)
-        x = 1.5 * nn.Tanh()(x) # enlarge tanh range for better converge
+        if self.activation == 'large_tanh':
+            x = 1.5 * nn.Tanh()(x) # enlarge tanh range for better converge
+        elif self.activation == 'tanh':
+            x = nn.Tanh()(x)
+        else:
+            x = x # No activation function
         return x

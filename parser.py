@@ -9,12 +9,19 @@ def parse_arguments():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument(
+        "--G_activation",
+        type=str,
+        default="large_tanh",
+        choices=["none", "large_tanh", "tanh"]
+        help="Domain adaptation only applys to positive database"
+    )
+    parser.add_argument(
         "--DA_only_positive",
         action="store_true",
         help="Domain adaptation only applys to positive database"
     )
     parser.add_argument(
-        "--generative_net",
+        "--G_net",
         type=str,
         default="none",
         choices=["none", "unet"],

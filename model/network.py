@@ -303,8 +303,8 @@ def get_output_channels_dim(model):
 class GenerativeNet(nn.Module):
     def __init__(self, args, input_channel_num, output_channel_num):
         super().__init__()
-        if args.generative_net == 'unet':
-            self.model = UNet(input_channel_num, output_channel_num)
+        if args.G_net == 'unet':
+            self.model = UNet(input_channel_num, output_channel_num, activation=args.G_activation)
         else:
             raise KeyError()
     
