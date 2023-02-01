@@ -432,10 +432,10 @@ def test_translation(args, eval_ds, model):
     model = model.eval()
     psnr_sum = 0
     psnr_count = 0
-    if args.G_vis:
-        if os.path.isdir("G_vis"):
-            shutil.rmtree("G_vis")
-        os.mkdir("G_vis")
+    if args.G_visual:
+        if os.path.isdir("G_visual"):
+            shutil.rmtree("G_visual")
+        os.mkdir("G_visual")
     with torch.no_grad():
         # For database use "hard_resize", although it usually has no effect because database images have same resolution
         eval_ds.test_method = "hard_resize"
@@ -463,7 +463,7 @@ def test_translation(args, eval_ds, model):
             database_images = images[database_images_index]
             output_images = model(database_images.to(args.device)).cpu()
             output_images = torch.clip(output_images, min=-1, max=1) * 0.5 + 0.5
-            if args.G_vis:
+            if args.G_visual:
                 vis_image = transforms.ToPILImage()(output_images)
                 vis_image.save(f"G_{psnr_count}.jpg")
             psnr_sum += calculate_psnr(query_images, output_images)
