@@ -12,7 +12,7 @@ def parse_arguments():
         "--G_activation",
         type=str,
         default="large_tanh",
-        choices=["none", "large_tanh", "tanh"]
+        choices=["none", "large_tanh", "tanh"],
         help="Domain adaptation only applys to positive database"
     )
     parser.add_argument(
