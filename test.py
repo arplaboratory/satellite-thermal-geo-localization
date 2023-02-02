@@ -464,8 +464,12 @@ def test_translation(args, eval_ds, model):
             output_images = model(database_images.to(args.device)).cpu()
             output_images = torch.clip(output_images, min=-1, max=1) * 0.5 + 0.5
             if args.G_visual:
-                vis_image = transforms.ToPILImage()(output_images)
-                vis_image.save(f"G_{psnr_count}.jpg")
+                vis_image_1 = transforms.ToPILImage()(output_images[0])
+                vis_image_2 = transforms.ToPILImage()(query_images[0])
+                dst = Image.new('RGB', (vis_image_1.width, vis_image_1.height + vis_image_2.height))
+                dst.paste(vis_image_1, (0, 0))
+                dst.paste(vis_image_2, (0, vis_image_1.height))
+                dst.save(f"G_visual/G_{psnr_count}.jpg")
             psnr_sum += calculate_psnr(query_images, output_images)
             psnr_count += 1
 

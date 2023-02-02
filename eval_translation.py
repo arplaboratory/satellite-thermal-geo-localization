@@ -41,7 +41,7 @@ if args.resume is not None:
 model = torch.nn.DataParallel(model)
 
 ######################################### DATASETS #########################################
-test_ds = datasets_ws.BaseDataset(
+test_ds = datasets_ws.TranslationDataset(
     args, args.datasets_folder, args.dataset_name, "test")
 logging.info(f"Test set: {test_ds}")
 
