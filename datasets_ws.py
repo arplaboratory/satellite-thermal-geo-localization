@@ -975,7 +975,7 @@ class TranslationDataset(BaseDataset):
             self.pairs_global_indexes[index], (1, 1)
         )
 
-        query = self.resized_transform(
+        query = self.query_transform(
             self._find_img_in_h5(query_index, "queries"))
         positive = self.resized_transform(
             self._find_img_in_h5(best_positive_index, "database")
