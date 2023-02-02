@@ -4,6 +4,7 @@ import torch
 import logging
 import torchvision
 from torch import nn
+import torchvision
 from os.path import join
 from transformers import ViTModel
 from google_drive_downloader import GoogleDriveDownloader as gdd
@@ -122,7 +123,7 @@ class GeoLocalizationNet(nn.Module):
                 elif self.DA == 'DANN_before_conv':
                     reverse_x = ReverseLayerF.apply(x, alpha)
             elif self.DA == 'DANN_after':
-                reverse_x = ReverseLayerF.apply(x_after.view(x_after.shape[0], -1), alpha)
+                reverse_x = ReverseLayerF.apply(x_after, alpha)
             return x_after, reverse_x
         return x_after
 
@@ -305,6 +306,8 @@ class GenerativeNet(nn.Module):
         super().__init__()
         if args.G_net == 'unet':
             self.model = UNet(input_channel_num, output_channel_num, activation=args.G_activation)
+        elif args.G_net == 'deeplabv3':
+            self.model = torchvision.models.segmentation.deeplabv3.deeplabv3_mobilenet_v3_large(num_classes=output_channel_num)
         else:
             raise KeyError()
     

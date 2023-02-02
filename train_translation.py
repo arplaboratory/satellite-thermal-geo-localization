@@ -17,7 +17,7 @@ from datetime import datetime
 import torchvision.transforms as transforms
 from torch.utils.data.dataloader import DataLoader
 import copy
-
+import wandb
 torch.backends.cudnn.benchmark = True  # Provides a speedup
 
 
@@ -32,6 +32,7 @@ args.save_dir = join(
 commons.setup_logging(args.save_dir)
 commons.make_deterministic(args.seed)
 logging.info(f"Arguments: {args}")
+wandb.init(project="VTLG", entity="xjh19971", config=vars(args))
 logging.info(f"The outputs are being saved in {args.save_dir}")
 logging.info(
     f"Using {torch.cuda.device_count()} GPUs and {multiprocessing.cpu_count()} CPUs"
@@ -150,8 +151,6 @@ for epoch_num in range(start_epoch_num, args.epochs_num):
 
         logging.debug(debug_str)
     
-    del pairs_dl
-    
     info_str = f"Finished epoch {epoch_num:02d} in {str(datetime.now() - epoch_start_time)[:-7]}, "+ \
         f"average epoch sum loss = {epoch_losses.mean():.4f}, "
 
@@ -162,6 +161,13 @@ for epoch_num in range(start_epoch_num, args.epochs_num):
     logging.info(f"PSNR on val set {val_ds}: {psnr_str}")
 
     is_best = psnr > best_psnr
+
+    wandb.log({
+            "epoch_num": epoch_num,
+            "psnr": psnr,
+            "best_psnr": psnr if is_best else best_psnr,
+            "sum_loss": epoch_losses.mean(),
+        },)
 
     # Save checkpoint, which contains all training parameters
     util.save_checkpoint(
@@ -195,7 +201,7 @@ for epoch_num in range(start_epoch_num, args.epochs_num):
                 f"Performance did not improve for {not_improved_num} epochs. Stop training."
             )
             break
-
+        
 
 logging.info(f"Best PSNR: {best_psnr:.1f}")
 logging.info(
