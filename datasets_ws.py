@@ -921,7 +921,7 @@ class TranslationDataset(BaseDataset):
 
         self.query_transform = transforms.Compose(
             [
-                transforms.Grayscale
+                transforms.Grayscale()
                 if self.args.G_gray
                 else identity_transform,
                 self.resized_transform,
