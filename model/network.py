@@ -308,13 +308,15 @@ class GenerativeNet(nn.Module):
         if args.G_net == 'unet':
             self.model = UNet(input_channel_num, output_channel_num, activation=args.G_activation)
         elif args.G_net == 'deeplabv3':
+            if args.G_activation != "none":
+                raise NotImplementedError()
             self.model = torchvision.models.segmentation.deeplabv3.deeplabv3_mobilenet_v3_large(num_classes=output_channel_num)
         else:
             raise KeyError()
     
     def forward(self, x):
         if self.model_name == 'deeplabv3':
-            x= self.model(x)['out']
+            x = self.model(x)['out']
         else:
             x = self.model(x)
         return x

@@ -28,11 +28,9 @@ base_transform = transforms.Compose(
 base_translation_transform = transforms.Compose(
     [
         transforms.ToTensor(),
-        transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[
-                             0.5, 0.5, 0.5]),
+        transforms.Normalize(mean=0.5, std=0.5),
     ]
 )
-
 
 def path_to_pil_img(path):
     return Image.open(path).convert("RGB")
@@ -980,9 +978,7 @@ class TranslationDataset(BaseDataset):
         positive = self.resized_transform(
             self._find_img_in_h5(best_positive_index, "database")
         )
-        images = torch.stack((query, positive), 0)
-        pairs_local_indexes = torch.tensor([0, 1], dtype=torch.int)
-        return images, pairs_local_indexes, self.pairs_global_indexes[index]
+        return query, positive
 
     def __len__(self):
         if self.is_inference:
