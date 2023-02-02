@@ -304,6 +304,7 @@ def get_output_channels_dim(model):
 class GenerativeNet(nn.Module):
     def __init__(self, args, input_channel_num, output_channel_num):
         super().__init__()
+        self.model_name = args.G_net
         if args.G_net == 'unet':
             self.model = UNet(input_channel_num, output_channel_num, activation=args.G_activation)
         elif args.G_net == 'deeplabv3':
@@ -312,6 +313,9 @@ class GenerativeNet(nn.Module):
             raise KeyError()
     
     def forward(self, x):
-        x = self.model(x)
+        if self.model_name == 'deeplabv3':
+            x= self.model(x)['out']
+        else:
+            x = self.model(x)
         return x
 

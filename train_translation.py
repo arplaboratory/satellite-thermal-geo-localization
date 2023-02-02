@@ -132,7 +132,6 @@ for epoch_num in range(start_epoch_num, args.epochs_num):
             query_images = images[query_images_index].to(args.device)
             database_images = images[database_images_index]
             output_images = model(database_images.to(args.device))
-
             loss_pairs = criterion_pairs(output_images, query_images)
 
             loss = loss_pairs
