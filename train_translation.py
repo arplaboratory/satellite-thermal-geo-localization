@@ -145,7 +145,9 @@ for epoch_num in range(start_epoch_num, args.epochs_num):
             if args.G_loss == 'MSSSIM':
                 query_images = query_images * 0.5 + 0.5
                 output_images = torch.clamp(output_images * 0.5 + 0.5, min=0, max=1)
-            loss_pairs = criterion_pairs(output_images, query_images)
+                loss_pairs = 1 - criterion_pairs(output_images, query_images)
+            else:
+                loss_pairs = criterion_pairs(output_images, query_images)
 
             loss = loss_pairs
 
