@@ -9,6 +9,11 @@ def parse_arguments():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument(
+        "--G_gray",
+        action="store_true",
+        help="G_loss"
+    )
+    parser.add_argument(
         "--G_loss",
         default="smoothL1",
         choices=["smoothL1", "L1", "MSE", "MSSSIM"],

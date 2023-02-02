@@ -58,7 +58,10 @@ test_ds = datasets_ws.TranslationDataset(
 logging.info(f"Test set: {test_ds}")
 
 # Initialize model
-model = network.GenerativeNet(args, 3, 3)
+if args.G_gray:
+    model = network.GenerativeNet(args, 3, 1)
+else:   
+    model = network.GenerativeNet(args, 3, 3)
 model = model.to(args.device)
 
 model = torch.nn.DataParallel(model)
@@ -178,6 +181,7 @@ for epoch_num in range(start_epoch_num, args.epochs_num):
 
     wandb.log({
             "epoch_num": epoch_num,
+            "psnr": psnr[0],
             "msssim": psnr[1],
             "best_msssim": psnr[1] if is_best else best_psnr,
             "sum_loss": epoch_losses.mean(),

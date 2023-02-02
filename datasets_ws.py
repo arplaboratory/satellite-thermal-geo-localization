@@ -919,6 +919,16 @@ class TranslationDataset(BaseDataset):
             ]
         )
 
+        self.query_transform = transforms.Compose(
+            [
+                transforms.Grayscale
+                if self.args.G_gray
+                else identity_transform,
+                self.resized_transform,
+            ]
+        )
+
+        self.database_transform = self.resized_transform
         # Find hard_positives_per_query, which are within train_positives_dist_threshold (0.1 meters)
         knn = NearestNeighbors(n_jobs=-1)
         knn.fit(self.database_utms)
