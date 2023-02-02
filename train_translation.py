@@ -17,6 +17,7 @@ from datetime import datetime
 import torchvision.transforms as transforms
 from torch.utils.data.dataloader import DataLoader
 import copy
+from model.msssim import ssim
 import wandb
 torch.backends.cudnn.benchmark = True  # Provides a speedup
 
@@ -82,6 +83,8 @@ elif args.G_loss == 'L1':
     criterion_pairs = nn.L1Loss()
 elif args.G_loss == 'MSE':
     criterion_pairs = nn.MSELoss()
+elif args.G_loss == 'MSSSIM':
+    criterion_pairs = ssim.MS_SSIM(data_range=1)
 else:
     raise NotImplementedError()
     
@@ -139,6 +142,9 @@ for epoch_num in range(start_epoch_num, args.epochs_num):
             query_images = images[query_images_index].to(args.device)
             database_images = images[database_images_index]
             output_images = model(database_images.to(args.device))
+            if args.G_loss == 'MSSSIM':
+                query_images = query_images * 0.5 + 0.5
+                output_images = torch.clamp(output_images * 0.5 + 0.5, min=0, max=1)
             loss_pairs = criterion_pairs(output_images, query_images)
 
             loss = loss_pairs
@@ -166,12 +172,12 @@ for epoch_num in range(start_epoch_num, args.epochs_num):
     psnr, psnr_str = test.test_translation(args, val_ds, model)
     logging.info(f"PSNR on val set {val_ds}: {psnr_str}")
 
-    is_best = psnr[0] > best_psnr
+    is_best = psnr[1] > best_psnr
 
     wandb.log({
             "epoch_num": epoch_num,
-            "psnr": psnr[0],
-            "best_psnr": psnr[0] if is_best else best_psnr,
+            "msssim": psnr[1],
+            "best_msssim": psnr[1] if is_best else best_psnr,
             "sum_loss": epoch_losses.mean(),
         },)
 
@@ -183,6 +189,7 @@ for epoch_num in range(start_epoch_num, args.epochs_num):
             "model_state_dict": model.state_dict(),
             "optimizer_state_dict": optimizer.state_dict(),
             "psnr": psnr[0],
+            "msssim": psnr[1],
             "best_psnr": best_psnr,
             "not_improved_num": not_improved_num,
         },
@@ -193,14 +200,14 @@ for epoch_num in range(start_epoch_num, args.epochs_num):
     # If PSNR did not improve for "many" epochs, stop training
     if is_best:
         logging.info(
-            f"Improved: previous best PSNR = {best_psnr:.1f}, current PSNR = {psnr[0]:.1f}"
+            f"Improved: previous best MSSSIM = {best_psnr:.1f}, current MSSSIM = {psnr[1]:.1f}"
         )
-        best_psnr = psnr[0]
+        best_psnr = psnr[1]
         not_improved_num = 0
     else:
         not_improved_num += 1
         logging.info(
-            f"Not improved: {not_improved_num} / {args.patience}: best PSNR = {best_psnr:.1f}, current PSNR = {psnr[0]:.1f}"
+            f"Not improved: {not_improved_num} / {args.patience}: best MSSSIM = {best_psnr:.1f}, current MSSSIM = {psnr[1]:.1f}"
         )
         if not_improved_num >= args.patience:
             logging.info(

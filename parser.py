@@ -9,6 +9,12 @@ def parse_arguments():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument(
+        "--G_loss",
+        default="smoothL1",
+        choices=["smoothL1", "L1", "MSE", "MSSSIM"],
+        help="G_loss"
+    )
+    parser.add_argument(
         "--G_visual",
         action="store_true",
         help="G_visual"
@@ -29,7 +35,7 @@ def parse_arguments():
         "--G_net",
         type=str,
         default="none",
-        choices=["none", "unet"],
+        choices=["none", "unet", "deeplabv3"],
         help="G_net"
     )
     parser.add_argument(
