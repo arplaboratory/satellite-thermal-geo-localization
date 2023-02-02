@@ -9,6 +9,7 @@ from torch.utils.data.dataset import Subset
 from utils.plotting import save_heatmap_simulation, process_results_simulation
 from h5_transformer import calc_overlap
 from model.functional import calculate_psnr
+from model.msssim import ssim
 import yaml
 import os
 from PIL import Image
@@ -432,6 +433,8 @@ def test_translation(args, eval_ds, model):
     model = model.eval()
     psnr_sum = 0
     psnr_count = 0
+    msssim_sum = 0
+    msssim_count = 0
     if args.G_visual:
         if os.path.isdir("G_visual"):
             shutil.rmtree("G_visual")
@@ -471,13 +474,16 @@ def test_translation(args, eval_ds, model):
                 dst.paste(vis_image_2, (0, vis_image_1.height))
                 dst.save(f"G_visual/G_{psnr_count}.jpg")
             psnr_sum += calculate_psnr(query_images, output_images)
+            msssim_sum += ssim.ms_ssim(query_images, output_images, data_range=1.0)
             psnr_count += 1
+            msssim_count += 1
 
     psnr_sum /= psnr_count
+    msssim_sum /= msssim_count
 
-    psnr_str = f"PSNR: {psnr_sum:.1f}"
+    psnr_str = f"PSNR: {psnr_sum:.1f}, MS-SSIM: {msssim_sum:.1f}"
             
-    return psnr_sum, psnr_str
+    return [psnr_sum, msssim_sum], psnr_str
 
 def top_n_voting(topn, predictions, distances, maj_weight):
     if topn == "top1":

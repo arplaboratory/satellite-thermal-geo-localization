@@ -76,7 +76,14 @@ elif args.optim == "sgd":
 else:
     raise NotImplementedError()
 
-criterion_pairs = nn.SmoothL1Loss()
+if args.G_loss == 'smoothL1':
+    criterion_pairs = nn.SmoothL1Loss()
+elif args.G_loss == 'L1':
+    criterion_pairs = nn.L1Loss()
+elif args.G_loss == 'MSE':
+    criterion_pairs = nn.MSELoss()
+else:
+    raise NotImplementedError()
     
 # Resume model, optimizer, and other training parameters
 if args.resume:
@@ -159,12 +166,12 @@ for epoch_num in range(start_epoch_num, args.epochs_num):
     psnr, psnr_str = test.test_translation(args, val_ds, model)
     logging.info(f"PSNR on val set {val_ds}: {psnr_str}")
 
-    is_best = psnr > best_psnr
+    is_best = psnr[0] > best_psnr
 
     wandb.log({
             "epoch_num": epoch_num,
-            "psnr": psnr,
-            "best_psnr": psnr if is_best else best_psnr,
+            "psnr": psnr[0],
+            "best_psnr": psnr[0] if is_best else best_psnr,
             "sum_loss": epoch_losses.mean(),
         },)
 
@@ -175,7 +182,7 @@ for epoch_num in range(start_epoch_num, args.epochs_num):
             "epoch_num": epoch_num,
             "model_state_dict": model.state_dict(),
             "optimizer_state_dict": optimizer.state_dict(),
-            "psnr": psnr,
+            "psnr": psnr[0],
             "best_psnr": best_psnr,
             "not_improved_num": not_improved_num,
         },
@@ -186,14 +193,14 @@ for epoch_num in range(start_epoch_num, args.epochs_num):
     # If PSNR did not improve for "many" epochs, stop training
     if is_best:
         logging.info(
-            f"Improved: previous best PSNR = {best_psnr:.1f}, current PSNR = {psnr:.1f}"
+            f"Improved: previous best PSNR = {best_psnr:.1f}, current PSNR = {psnr[0]:.1f}"
         )
-        best_psnr = psnr
+        best_psnr = psnr[0]
         not_improved_num = 0
     else:
         not_improved_num += 1
         logging.info(
-            f"Not improved: {not_improved_num} / {args.patience}: best PSNR = {best_psnr:.1f}, current PSNR = {psnr:.1f}"
+            f"Not improved: {not_improved_num} / {args.patience}: best PSNR = {best_psnr:.1f}, current PSNR = {psnr[0]:.1f}"
         )
         if not_improved_num >= args.patience:
             logging.info(
