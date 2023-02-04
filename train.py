@@ -205,8 +205,6 @@ elif args.criterion == "sare_joint":
 logging.info(f'Domain adapataion: {args.DA}')
 if args.DA.startswith('DANN'):
     criterion_DA = torch.nn.NLLLoss(reduction='sum')
-else:
-    raise NotImplementedError()
 
 # Resume model, optimizer, and other training parameters
 if args.resume:
