@@ -14,6 +14,11 @@ def parse_arguments():
         help="G_contrast"
     )
     parser.add_argument(
+        "--G_gray",
+        action="store_true",
+        help="G_loss"
+    )
+    parser.add_argument(
         "--G_loss",
         default="smoothL1",
         choices=["smoothL1", "L1", "MSE", "MSSSIM"],

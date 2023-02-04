@@ -451,19 +451,15 @@ def test_translation(args, eval_ds, model):
             dataset=eval_ds,
             num_workers=args.num_workers,
             batch_size=1,
-            collate_fn=datasets_ws.collate_fn,
             pin_memory=(args.device == "cuda"),
         )
 
-        logging.debug("Calculating PSNR")
+        logging.debug("Calculating PSNR and MSSSIM")
 
-        for images, pairs_local_indexes, _ in tqdm(eval_dataloader, ncols=100):
+        for query, database in tqdm(eval_dataloader, ncols=100):
             # Compute features of all images (images contains queries, positives and negatives)
-            query_images_index = np.arange(0, len(images), 1 + 1)
-            images_index = np.arange(0, len(images))
-            database_images_index = np.setdiff1d(images_index, query_images_index, assume_unique=True)
-            query_images = images[query_images_index] * 0.5 + 0.5
-            database_images = images[database_images_index]
+            query_images = query * 0.5 + 0.5
+            database_images = database
             output_images = model(database_images.to(args.device)).cpu()
             output_images = torch.clip(output_images, min=-1, max=1) * 0.5 + 0.5
             if args.G_visual:
@@ -474,7 +470,7 @@ def test_translation(args, eval_ds, model):
                 dst.paste(vis_image_2, (0, vis_image_1.height))
                 dst.save(f"G_visual/G_{psnr_count}.jpg")
             psnr_sum += calculate_psnr(query_images, output_images)
-            msssim_sum += ssim.ms_ssim(query_images, output_images, data_range=1.0)
+            msssim_sum += ssim.ms_ssim(query_images, output_images, data_range=1)
             psnr_count += 1
             msssim_count += 1
 

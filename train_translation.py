@@ -58,7 +58,10 @@ test_ds = datasets_ws.TranslationDataset(
 logging.info(f"Test set: {test_ds}")
 
 # Initialize model
-model = network.GenerativeNet(args, 3, 3)
+if args.G_gray:
+    model = network.GenerativeNet(args, 3, 1)
+else:   
+    model = network.GenerativeNet(args, 3, 3)
 model = model.to(args.device)
 
 model = torch.nn.DataParallel(model)
@@ -84,7 +87,7 @@ elif args.G_loss == 'L1':
 elif args.G_loss == 'MSE':
     criterion_pairs = nn.MSELoss()
 elif args.G_loss == 'MSSSIM':
-    criterion_pairs = ssim.MS_SSIM(data_range=1)
+    criterion_pairs = ssim.MS_SSIM(data_range=1, channel=1 if args.G_gray else 3)
 else:
     raise NotImplementedError()
     
@@ -125,7 +128,6 @@ for epoch_num in range(start_epoch_num, args.epochs_num):
             dataset=train_ds,
             num_workers=args.num_workers,
             batch_size=args.train_batch_size,
-            collate_fn=datasets_ws.collate_fn,
             pin_memory=(args.device == "cuda"),
             drop_last=True,
         )
@@ -134,13 +136,10 @@ for epoch_num in range(start_epoch_num, args.epochs_num):
 
         # images shape: (train_batch_size*12)*3*H*W ; by default train_batch_size=4, H=512, W=512
         # pairs_local_indexes shape: (train_batch_size*10)*3 ; because 10 pairs per query
-        for images, pairs_local_indexes, _ in tqdm(pairs_dl, ncols=100):
+        for query, database in tqdm(pairs_dl, ncols=100):
             # Compute features of all images (images contains queries, positives and negatives)
-            query_images_index = np.arange(0, len(images), 1 + 1)
-            images_index = np.arange(0, len(images))
-            database_images_index = np.setdiff1d(images_index, query_images_index, assume_unique=True)
-            query_images = images[query_images_index].to(args.device)
-            database_images = images[database_images_index]
+            query_images = query.to(args.device)
+            database_images = database
             output_images = model(database_images.to(args.device))
             if args.G_loss == 'MSSSIM':
                 query_images = query_images * 0.5 + 0.5
@@ -178,6 +177,7 @@ for epoch_num in range(start_epoch_num, args.epochs_num):
 
     wandb.log({
             "epoch_num": epoch_num,
+            "psnr": psnr[0],
             "msssim": psnr[1],
             "best_msssim": psnr[1] if is_best else best_psnr,
             "sum_loss": epoch_losses.mean(),

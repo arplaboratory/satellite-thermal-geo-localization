@@ -30,7 +30,10 @@ logging.info(f"Arguments: {args}")
 logging.info(f"The outputs are being saved in {args.save_dir}")
 
 ######################################### MODEL #########################################
-model = network.GenerativeNet(args, 3, 3)
+if args.G_gray:
+    model = network.GenerativeNet(args, 3, 1)
+else:
+    model = network.GenerativeNet(args, 3, 3)
 model = model.to(args.device)
 
 if args.resume is not None:
