@@ -974,12 +974,12 @@ class TranslationDataset(BaseDataset):
         )
 
         if self.args.G_contrast:
-            query = self.resized_transform(
+            query = self.query_transform(
                 transforms.functional.adjust_contrast(self._find_img_in_h5(query_index, "queries"), contrast_factor=3))
         else:
-            query = self.resized_transform(
+            query = self.query_transform(
                 self._find_img_in_h5(query_index, "queries"))
-        positive = self.resized_transform(
+        positive = self.database_transform(
             self._find_img_in_h5(best_positive_index, "database")
         )
         return query, positive
