@@ -908,6 +908,7 @@ class TranslationDataset(BaseDataset):
     ):
         super().__init__(args, datasets_folder, dataset_name, split)
         self.is_inference = False
+        self.contrast = args.G_contrast
 
         identity_transform = transforms.Lambda(lambda x: x)
         self.resized_transform = transforms.Compose(
@@ -965,8 +966,12 @@ class TranslationDataset(BaseDataset):
             self.pairs_global_indexes[index], (1, 1)
         )
 
-        query = self.resized_transform(
-            self._find_img_in_h5(query_index, "queries"))
+        if self.contrast:
+            query = self.resized_transform(
+                transforms.functional.adjust_contrast(self._find_img_in_h5(query_index, "queries"), contrast_factor=3))
+        else:
+            query = self.resized_transform(
+                self._find_img_in_h5(query_index, "queries"))
         positive = self.resized_transform(
             self._find_img_in_h5(best_positive_index, "database")
         )
