@@ -9,6 +9,13 @@ def parse_arguments():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument(
+        "--GAN_norm",
+        type=str,
+        default="batch",
+        choices=["batch", "instance"],
+        help="Norm layer in GAN"
+    )
+    parser.add_argument(
         "--G_contrast",
         action="store_true",
         help="G_contrast"
@@ -17,6 +24,12 @@ def parse_arguments():
         "--G_gray",
         action="store_true",
         help="G_gray"
+    )
+    parser.add_argument(
+        "--G_loss_lambda",
+        type=float,
+        default=100.0,
+        help="G_loss_lambda only for pix2pix"
     )
     parser.add_argument(
         "--G_loss",
