@@ -104,7 +104,8 @@ for epoch_num in range(start_epoch_num, args.epochs_num):
     logging.info(f"Start training epoch: {epoch_num:02d}")
 
     epoch_start_time = datetime.now()
-    epoch_losses = np.zeros((0, 1), dtype=np.float32)
+    epoch_losses_GAN = np.zeros((0, 1), dtype=np.float32)
+    epoch_losses_AUX = np.zeros((0, 1), dtype=np.float32)
     # How many loops should an epoch last (default is 5000/1000=5)
     loops_num = math.ceil(args.queries_per_epoch / args.cache_refresh_rate)
     for loop_num in range(loops_num):
@@ -130,30 +131,31 @@ for epoch_num in range(start_epoch_num, args.epochs_num):
         for query, database in tqdm(pairs_dl, ncols=100):
             # Compute features of all images (images contains queries, positives and negatives)
             model.set_input(database, query)
-
-            loss = loss_pairs
-
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
+            loss_GAN = model.loss_G_GAN
+            loss_AUX = model.loss_G_L1
+            model.optimize_parameters()
 
             # Keep track of all losses by appending them to epoch_losses
-            batch_loss = loss.item()
-            epoch_losses = np.append(epoch_losses, batch_loss)
-            del loss
+            batch_loss_GAN = loss_GAN.item()
+            epoch_losses_GAN = np.append(epoch_losses_GAN, batch_loss_GAN)
+            batch_loss_AUX = loss_AUX.item()
+            epoch_losses_AUX = np.append(epoch_losses_AUX, batch_loss_AUX)
         debug_str = f"Epoch[{epoch_num:02d}]({loop_num}/{loops_num}): "+ \
-            f"current batch sum loss = {batch_loss:.4f}, "+ \
-            f"average epoch sum loss = {epoch_losses.mean():.4f}, "
+            f"current batch sum GAN loss = {batch_loss_GAN:.4f}, "+ \
+            f"average epoch sum GAN loss = {epoch_losses_GAN.mean():.4f}, "+ \
+            f"current batch sum AUX loss = {batch_loss_AUX:.4f}, "+ \
+            f"average epoch sum AUX loss = {epoch_losses_AUX.mean():.4f}, "
 
         logging.debug(debug_str)
     
     info_str = f"Finished epoch {epoch_num:02d} in {str(datetime.now() - epoch_start_time)[:-7]}, "+ \
-        f"average epoch sum loss = {epoch_losses.mean():.4f}, "
+        f"average epoch sum GAN loss = {epoch_losses_GAN.mean():.4f}, "+ \
+        f"average epoch sum AUX loss = {epoch_losses_AUX.mean():.4f}, "
 
     logging.info(info_str)
 
     # Compute rPSNR on validation set
-    psnr, psnr_str = test.test_translation(args, val_ds, model)
+    psnr, psnr_str = test.test_translation_pix2pix(args, val_ds, model)
     logging.info(f"PSNR on val set {val_ds}: {psnr_str}")
 
     is_best_psnr = psnr[0] > best_psnr
@@ -165,7 +167,8 @@ for epoch_num in range(start_epoch_num, args.epochs_num):
             "best_psnr": psnr[0] if is_best_psnr else best_psnr,
             "msssim": psnr[1],
             "best_msssim": psnr[1] if is_best_msssim else best_msssim,
-            "sum_loss": epoch_losses.mean(),
+            "GAN_loss": epoch_losses_GAN.mean(),
+            "AUX_loss": epoch_losses_AUX.mean(),
         },)
 
     # Save checkpoint, which contains all training parameters
@@ -236,7 +239,7 @@ best_model_state_dict = torch.load(join(args.save_dir, "best_model.pth"))[
 ]
 model.load_state_dict(best_model_state_dict)
 
-psnr, psnr_str = test.test_translation(
+psnr, psnr_str = test.test_translation_pix2pix(
     args, test_ds, model)
         
 logging.info(f"PSNR on {test_ds}: {psnr_str}")
