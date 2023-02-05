@@ -80,12 +80,8 @@ elif args.optim == "sgd":
 else:
     raise NotImplementedError()
 
-if args.G_loss == 'smoothL1':
-    criterion_pairs = nn.SmoothL1Loss()
-elif args.G_loss == 'L1':
+if args.G_loss == 'L1':
     criterion_pairs = nn.L1Loss()
-elif args.G_loss == 'MSE':
-    criterion_pairs = nn.MSELoss()
 elif args.G_loss == 'MSSSIM':
     criterion_pairs = ssim.MS_SSIM(data_range=1, channel=1 if args.G_gray else 3)
 else:
@@ -101,10 +97,11 @@ if args.resume:
         not_improved_num,
     ) = util.resume_train(args, model, optimizer)
     logging.info(
-        f"Resuming from epoch {start_epoch_num} with best PSNR {best_psnr:.1f}"
+        f"Resuming from epoch {start_epoch_num} with best PSNR {best_psnr:.1f}",
     )
 else:
     best_psnr = start_epoch_num = not_improved_num = 0
+best_msssim = 0
 
 model = model.eval()
 
@@ -143,7 +140,7 @@ for epoch_num in range(start_epoch_num, args.epochs_num):
             output_images = model(database_images.to(args.device))
             if args.G_loss == 'MSSSIM':
                 query_images = query_images * 0.5 + 0.5
-                output_images = torch.clamp(output_images * 0.5 + 0.5, min=0, max=1)
+                output_images = output_images * 0.5 + 0.5
                 loss_pairs = 1 - criterion_pairs(output_images, query_images)
             else:
                 loss_pairs = criterion_pairs(output_images, query_images)
@@ -173,13 +170,15 @@ for epoch_num in range(start_epoch_num, args.epochs_num):
     psnr, psnr_str = test.test_translation(args, val_ds, model)
     logging.info(f"PSNR on val set {val_ds}: {psnr_str}")
 
-    is_best = psnr[1] > best_psnr
+    is_best_psnr = psnr[0] > best_psnr
+    is_best_msssim = psnr[1] > best_msssim
 
     wandb.log({
             "epoch_num": epoch_num,
             "psnr": psnr[0],
+            "best_psnr": psnr[0] if is_best_psnr else best_psnr,
             "msssim": psnr[1],
-            "best_msssim": psnr[1] if is_best else best_psnr,
+            "best_msssim": psnr[1] if is_best_msssim else best_msssim,
             "sum_loss": epoch_losses.mean(),
         },)
 
@@ -195,21 +194,43 @@ for epoch_num in range(start_epoch_num, args.epochs_num):
             "best_psnr": best_psnr,
             "not_improved_num": not_improved_num,
         },
-        is_best,
+        is_best_psnr,
         filename="last_model.pth",
+        suffix="_psnr",
+    )
+    util.save_checkpoint(
+        args,
+        {
+            "epoch_num": epoch_num,
+            "model_state_dict": model.state_dict(),
+            "optimizer_state_dict": optimizer.state_dict(),
+            "psnr": psnr[0],
+            "msssim": psnr[1],
+            "best_msssim": best_msssim,
+            "not_improved_num": not_improved_num,
+        },
+        is_best_msssim,
+        filename="last_model.pth",
+        suffix="_msssim",
     )
 
     # If PSNR did not improve for "many" epochs, stop training
-    if is_best:
+    if is_best_psnr:
         logging.info(
-            f"Improved: previous best MSSSIM = {best_psnr:.1f}, current MSSSIM = {psnr[1]:.1f}"
+            f"Improved: previous best PSNR = {best_psnr:.1f}, current PSNR = {psnr[0]:.1f}"
         )
-        best_psnr = psnr[1]
+        best_psnr = psnr[0]
         not_improved_num = 0
-    else:
+    if is_best_msssim:
+        logging.info(
+            f"Improved: previous best MS-SSIM = {best_msssim:.1f}, current MS-SSIM = {psnr[1]:.1f}"
+        )
+        best_msssim = psnr[1]
+        not_improved_num = 0
+    if not (is_best_psnr or is_best_msssim):
         not_improved_num += 1
         logging.info(
-            f"Not improved: {not_improved_num} / {args.patience}: best MSSSIM = {best_psnr:.1f}, current MSSSIM = {psnr[1]:.1f}"
+            f"Not improved: {not_improved_num} / {args.patience}"
         )
         if not_improved_num >= args.patience:
             logging.info(
@@ -218,7 +239,7 @@ for epoch_num in range(start_epoch_num, args.epochs_num):
             break
         
 
-logging.info(f"Best PSNR: {best_psnr:.1f}")
+logging.info(f"Best PSNR: {best_psnr:.1f}, Best MS-SSIM: {best_msssim:.1f}")
 logging.info(
     f"Trained for {epoch_num+1:02d} epochs, in total in {str(datetime.now() - start_time)[:-7]}"
 )

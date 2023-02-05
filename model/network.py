@@ -15,7 +15,7 @@ from model.normalization import L2Norm
 import model.aggregation as aggregation
 from model.non_local import NonLocalBlock
 from model.functional import ReverseLayerF
-from model.unet.unet_model import UNet
+from model.pix2pix_networks.networks import UnetGenerator, GANLoss, NLayerDiscriminator
 
 # Pretrained models on Google Landmarks v2 and Places 365
 PRETRAINED_MODELS = {
@@ -74,6 +74,7 @@ class GeoLocalizationNet(nn.Module):
             self.self_att = True
 
     def create_domain_classifier(self, args):
+        domain_classifier = None
         if self.DA.startswith('DANN_before'):
             # Input dim = backbone_output_dim * H * W
             if self.DA == 'DANN_before':
@@ -101,6 +102,8 @@ class GeoLocalizationNet(nn.Module):
                                                    nn.ReLU(True),
                                                    nn.Linear(100, 2),
                                                    nn.LogSoftmax(dim=1))
+        else:
+            raise NotImplementedError()
         return domain_classifier
 
 
@@ -162,6 +165,7 @@ def get_aggregation(args):
 def get_pretrained_model(args):
     if args.pretrain == 'places':  num_classes = 365
     elif args.pretrain == 'gldv2':  num_classes = 512
+    else: raise NotImplementedError()
     
     if args.backbone.startswith("resnet18"):
         model = torchvision.models.resnet18(num_classes=num_classes)
@@ -301,23 +305,97 @@ def get_output_channels_dim(model):
     """Return the number of channels in the output of a model."""
     return model(torch.ones([1, 3, 224, 224])).shape[1]
 
+
 class GenerativeNet(nn.Module):
     def __init__(self, args, input_channel_num, output_channel_num):
         super().__init__()
         self.model_name = args.G_net
         if args.G_net == 'unet':
-            self.model = UNet(input_channel_num, output_channel_num, activation=args.G_activation)
-        elif args.G_net == 'deeplabv3':
-            if args.G_activation != "none":
-                raise NotImplementedError()
-            self.model = torchvision.models.segmentation.deeplabv3.deeplabv3_mobilenet_v3_large(num_classes=output_channel_num)
+            self.model = UnetGenerator(input_channel_num, output_channel_num, 8, norm=args.GAN_norm)
         else:
-            raise KeyError()
+            raise NotImplementedError()
     
     def forward(self, x):
-        if self.model_name == 'deeplabv3':
-            x = self.model(x)['out']
-        else:
-            x = self.model(x)
+        x = self.model(x)
         return x
+    
 
+class pix2pix(nn.Module):
+    def __init__(self, args, input_channel_num, output_channel_num):
+        super().__init__()
+        self.device = args.device
+        self.lambda_L1 = args.lambda_L1
+        self.criterionGAN = GANLoss("vanilla").to(args.device)
+        self.criterionL1 = torch.nn.L1Loss()
+        if args.G_net == 'unet':
+            self.netG = UnetGenerator(input_channel_num, output_channel_num, 8, norm=args.GAN_norm)
+        else:
+            raise NotImplementedError()
+        if args.D_net == 'patchGAN':
+            self.netG = UnetGenerator(input_channel_num, output_channel_num, 8, norm=args.GAN_norm)
+        else:
+            raise NotImplementedError()
+        self.netG = UnetGenerator(input_channel_num, output_channel_num, 8)
+        self.netD = NLayerDiscriminator(input_channel_num)
+        self.optimizer_G = torch.optim.Adam(self.netG.parameters(), lr=args.lr)
+        self.optimizer_D = torch.optim.Adam(self.netD.parameters(), lr=args.lr)
+
+    def set_input(self, A, B):
+        self.real_A = A.to(self.device)
+        self.real_B = B.to(self.device)
+
+    def forward(self):
+        """Run forward pass; called by both functions <optimize_parameters> and <test>."""
+        self.fake_B = self.netG(self.real_A)  # G(A)
+
+    def backward_D(self):
+        """Calculate GAN loss for the discriminator"""
+        # Fake; stop backprop to the generator by detaching fake_B
+        fake_AB = torch.cat((self.real_A, self.fake_B), 1)  # we use conditional GANs; we need to feed both input and output to the discriminator
+        pred_fake = self.netD(fake_AB.detach())
+        self.loss_D_fake = self.criterionGAN(pred_fake, False)
+        # Real
+        real_AB = torch.cat((self.real_A, self.real_B), 1)
+        pred_real = self.netD(real_AB)
+        self.loss_D_real = self.criterionGAN(pred_real, True)
+        # combine loss and calculate gradients
+        self.loss_D = (self.loss_D_fake + self.loss_D_real) * 0.5
+        self.loss_D.backward()
+
+    def backward_G(self):
+        """Calculate GAN and L1 loss for the generator"""
+        # First, G(A) should fake the discriminator
+        fake_AB = torch.cat((self.real_A, self.fake_B), 1)
+        pred_fake = self.netD(fake_AB)
+        self.loss_G_GAN = self.criterionGAN(pred_fake, True)
+        # Second, G(A) = B
+        self.loss_G_L1 = self.criterionL1(self.fake_B, self.real_B) * self.lambda_L1
+        # combine loss and calculate gradients
+        self.loss_G = self.loss_G_GAN + self.loss_G_L1
+        self.loss_G.backward()
+
+    def set_requires_grad(self, nets, requires_grad=False):
+        """Set requies_grad=Fasle for all the networks to avoid unnecessary computations
+        Parameters:
+            nets (network list)   -- a list of networks
+            requires_grad (bool)  -- whether the networks require gradients or not
+        """
+        if not isinstance(nets, list):
+            nets = [nets]
+        for net in nets:
+            if net is not None:
+                for param in net.parameters():
+                    param.requires_grad = requires_grad
+
+    def optimize_parameters(self):
+        self.forward()                   # compute fake images: G(A)
+        # update D
+        self.set_requires_grad(self.netD, True)  # enable backprop for D
+        self.optimizer_D.zero_grad()     # set D's gradients to zero
+        self.backward_D()                # calculate gradients for D
+        self.optimizer_D.step()          # update D's weights
+        # update G
+        self.set_requires_grad(self.netD, False)  # D requires no gradients when optimizing G
+        self.optimizer_G.zero_grad()        # set G's gradients to zero
+        self.backward_G()                   # calculate graidents for G
+        self.optimizer_G.step()             # update G's weights

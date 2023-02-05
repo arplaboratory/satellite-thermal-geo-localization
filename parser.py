@@ -16,12 +16,12 @@ def parse_arguments():
     parser.add_argument(
         "--G_gray",
         action="store_true",
-        help="G_loss"
+        help="G_gray"
     )
     parser.add_argument(
         "--G_loss",
         default="smoothL1",
-        choices=["smoothL1", "L1", "MSE", "MSSSIM"],
+        choices=["L1", "MSSSIM"],
         help="G_loss"
     )
     parser.add_argument(
@@ -30,22 +30,22 @@ def parse_arguments():
         help="G_visual"
     )
     parser.add_argument(
-        "--G_activation",
-        type=str,
-        default="large_tanh",
-        choices=["none", "large_tanh", "tanh"],
-        help="G_activation"
-    )
-    parser.add_argument(
         "--DA_only_positive",
         action="store_true",
         help="Domain adaptation only applys to positive database"
     )
     parser.add_argument(
+        "--D_net",
+        type=str,
+        default="none",
+        choices=["none", "patchGAN"],
+        help="D_net"
+    )
+    parser.add_argument(
         "--G_net",
         type=str,
         default="none",
-        choices=["none", "unet", "deeplabv3"],
+        choices=["none", "unet"],
         help="G_net"
     )
     parser.add_argument(

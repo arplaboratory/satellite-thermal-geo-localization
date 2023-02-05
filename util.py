@@ -23,11 +23,11 @@ def get_flops(model, input_shape=(480, 640)):
     return re.findall("Floating Point Operations on forward: (.*)\n", output)[0]
 
 
-def save_checkpoint(args, state, is_best, filename):
+def save_checkpoint(args, state, is_best, filename, suffix=""):
     model_path = join(args.save_dir, filename)
     torch.save(state, model_path)
     if is_best:
-        shutil.copyfile(model_path, join(args.save_dir, "best_model.pth"))
+        shutil.copyfile(model_path, join(args.save_dir, f"best_model{suffix}.pth"))
 
 
 def resume_model(args, model):
