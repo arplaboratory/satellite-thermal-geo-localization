@@ -9,6 +9,12 @@ def parse_arguments():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument(
+        "--GAN_save_freq",
+        type=int,
+        default=0
+        help="Save freq for GAN"
+    )
+    parser.add_argument(
         "--GAN_norm",
         type=str,
         default="batch",
@@ -38,9 +44,9 @@ def parse_arguments():
         help="G_loss"
     )
     parser.add_argument(
-        "--G_visual",
+        "--visual_all",
         action="store_true",
-        help="G_visual"
+        help="visual_all"
     )
     parser.add_argument(
         "--DA_only_positive",
@@ -433,4 +439,6 @@ def parse_arguments():
     if args.fc_output_dim is not None and args.conv_output_dim is not None:
         raise ValueError("fc_output_dim and conv_output_dim cannot be used at the same time")
 
+    if args.GAN_save_freq < 0:
+        raise ValueError()
     return args
