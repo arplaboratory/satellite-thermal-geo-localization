@@ -73,6 +73,21 @@ def resume_model_separate(args, model, model_db):
     model_db.load_state_dict(state_dict_db)
     return model, model_db
 
+def resume_model_pix2pix(args, model):
+    checkpoint = torch.load(args.resume, map_location=args.device)
+    if "model_netG_state_dict" in checkpoint:
+        state_dict_G = checkpoint["model_netG_state_dict"]
+    else:
+        raise NotImplementedError()
+    # if the model contains the prefix "module" which is appendend by
+    # DataParallel, remove it to avoid errors when loading dict
+    if list(state_dict_G.keys())[0].startswith("module"):
+        state_dict_G = OrderedDict(
+            {k.replace("module.", ""): v for (k, v) in state_dict_G.items()}
+        )
+    model.netG.load_state_dict(state_dict_G)
+    return model
+    
 def resume_train(args, model, optimizer=None, strict=False, DA=None):
     """Load model, optimizer, and other training parameters"""
     logging.debug(f"Loading checkpoint: {args.resume}")

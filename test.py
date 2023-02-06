@@ -458,15 +458,13 @@ def test_translation(args, eval_ds, model):
 
         for query, database in tqdm(eval_dataloader, ncols=100):
             # Compute features of all images (images contains queries, positives and negatives)
-            query_images = query * 0.5 + 0.5
-            database_images = database
-            output_images = model(database_images.to(args.device)).cpu()
-            output_images = torch.clip(output_images, min=-1, max=1) * 0.5 + 0.5
-            database_images = database_images * 0.5 + 0.5
+            query_images = query.to(args.device) * 0.5 + 0.5
+            output_images = output * 0.5 + 0.5
+            database_images = database.to(args.device) * 0.5 + 0.5
             if args.G_visual:
-                vis_image_1 = transforms.ToPILImage()(output_images[0])
-                vis_image_2 = transforms.ToPILImage()(query_images[0])
-                vis_image_3 = transforms.ToPILImage()(database_images[0])
+                vis_image_1 = transforms.ToPILImage()(output_images[0].cpu())
+                vis_image_2 = transforms.ToPILImage()(query_images[0].cpu())
+                vis_image_3 = transforms.ToPILImage()(database_images[0].cpu())
                 dst = Image.new('RGB', (vis_image_1.width, vis_image_1.height + vis_image_2.height + vis_image_3.height))
                 dst.paste(vis_image_1, (0, 0))
                 dst.paste(vis_image_2, (0, vis_image_1.height))
@@ -488,7 +486,6 @@ def test_translation_pix2pix(args, eval_ds, model):
     """Compute PSNR of the given dataset and compute the recalls."""
 
     model.netG = model.netG.eval()
-    model.netD = model.netD.eval()
     psnr_sum = 0
     psnr_count = 0
     msssim_sum = 0
