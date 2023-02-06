@@ -391,7 +391,7 @@ class pix2pix():
             # Denormalization
             self.real_B = self.real_B * 0.5 + 0.5
             self.fake_B = self.fake_B * 0.5 + 0.5
-            self.loss_G_L1 = 1 - self.criterionAUX(self.fake_B, self.real_B) * self.G_loss_lambda
+            self.loss_G_L1 = (1 - self.criterionAUX(self.fake_B, self.real_B)) * self.G_loss_lambda
         else:
             self.loss_G_L1 = self.criterionAUX(self.fake_B, self.real_B) * self.G_loss_lambda
         # combine loss and calculate gradients
