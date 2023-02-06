@@ -313,7 +313,7 @@ class GenerativeNet(nn.Module):
         super().__init__()
         self.model_name = args.G_net
         if args.G_net == 'unet':
-            self.model = UnetGenerator(input_channel_num, output_channel_num, 8, norm=args.GAN_norm)
+            self.model = UnetGenerator(input_channel_num, output_channel_num, 8, norm=args.GAN_norm, upsample=args.GAN_upsample)
         else:
             raise NotImplementedError()
     

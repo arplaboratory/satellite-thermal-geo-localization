@@ -9,9 +9,16 @@ def parse_arguments():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument(
+        "--GAN_upsample",
+        type=str,
+        default="convtrans",
+        choices=["convtrans", "bilinear"],
+        help="Save freq for GAN"
+    )
+    parser.add_argument(
         "--GAN_save_freq",
         type=int,
-        default=0
+        default=0,
         help="Save freq for GAN"
     )
     parser.add_argument(

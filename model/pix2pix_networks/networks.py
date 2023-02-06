@@ -67,7 +67,7 @@ class GANLoss(nn.Module):
 class UnetGenerator(nn.Module):
     """Create a Unet-based generator"""
 
-    def __init__(self, input_nc, output_nc, num_downs, ngf=64, norm="batch"):
+    def __init__(self, input_nc, output_nc, num_downs, ngf=64, norm="batch", upsample="convtrans"):
         """Construct a Unet generator
         Parameters:
             input_nc (int)  -- the number of channels in input images
@@ -81,14 +81,14 @@ class UnetGenerator(nn.Module):
         """
         super(UnetGenerator, self).__init__()
         # construct unet structure
-        unet_block = UnetSkipConnectionBlock(ngf * 8, ngf * 8, input_nc=None, submodule=None, norm=norm, innermost=True)  # add the innermost layer
+        unet_block = UnetSkipConnectionBlock(ngf * 8, ngf * 8, input_nc=None, submodule=None, norm=norm, innermost=True, upsample=upsample)  # add the innermost layer
         for i in range(num_downs - 5):          # add intermediate layers with ngf * 8 filters
-            unet_block = UnetSkipConnectionBlock(ngf * 8, ngf * 8, input_nc=None, submodule=unet_block, norm=norm)
+            unet_block = UnetSkipConnectionBlock(ngf * 8, ngf * 8, input_nc=None, submodule=unet_block, norm=norm, upsample=upsample)
         # gradually reduce the number of filters from ngf * 8 to ngf
-        unet_block = UnetSkipConnectionBlock(ngf * 4, ngf * 8, input_nc=None, submodule=unet_block, norm=norm)
-        unet_block = UnetSkipConnectionBlock(ngf * 2, ngf * 4, input_nc=None, submodule=unet_block, norm=norm)
-        unet_block = UnetSkipConnectionBlock(ngf, ngf * 2, input_nc=None, submodule=unet_block, norm=norm)
-        self.model = UnetSkipConnectionBlock(output_nc, ngf, input_nc=input_nc, submodule=unet_block, outermost=True, norm=norm)  # add the outermost layer
+        unet_block = UnetSkipConnectionBlock(ngf * 4, ngf * 8, input_nc=None, submodule=unet_block, norm=norm, upsample=upsample)
+        unet_block = UnetSkipConnectionBlock(ngf * 2, ngf * 4, input_nc=None, submodule=unet_block, norm=norm, upsample=upsample)
+        unet_block = UnetSkipConnectionBlock(ngf, ngf * 2, input_nc=None, submodule=unet_block, norm=norm, upsample=upsample)
+        self.model = UnetSkipConnectionBlock(output_nc, ngf, input_nc=input_nc, submodule=unet_block, outermost=True, norm=norm, upsample=upsample)  # add the outermost layer
 
     def forward(self, input):
         """Standard forward"""
@@ -102,7 +102,7 @@ class UnetSkipConnectionBlock(nn.Module):
     """
 
     def __init__(self, outer_nc, inner_nc, input_nc=None,
-                 submodule=None, outermost=False, innermost=False, norm="batch"):
+                 submodule=None, outermost=False, innermost=False, norm="batch", upsample="convtrans"):
         """Construct a Unet submodule with skip connections.
         Parameters:
             outer_nc (int) -- the number of filters in the outer conv layer
@@ -134,23 +134,38 @@ class UnetSkipConnectionBlock(nn.Module):
             raise NotImplementedError()
 
         if outermost:
-            upconv = nn.ConvTranspose2d(inner_nc * 2, outer_nc,
-                                        kernel_size=4, stride=2,
-                                        padding=1)
+            if upsample == "convtrans":
+                upconv = nn.ConvTranspose2d(inner_nc * 2, outer_nc,
+                                            kernel_size=4, stride=2,
+                                            padding=1)
+            elif upsample == "bilinear":
+                upconv = nn.Sequential(nn.UpsamplingBilinear2d(scale_factor=2),
+                                       nn.Conv2d(inner_nc * 2, outer_nc,
+                                       kernel_size=4))
             down = [downconv]
             up = [uprelu, upconv, nn.Tanh()]
             model = down + [submodule] + up
         elif innermost:
-            upconv = nn.ConvTranspose2d(inner_nc, outer_nc,
-                                        kernel_size=4, stride=2,
-                                        padding=1, bias=use_bias)
+            if upsample == "convtrans":
+                upconv = nn.ConvTranspose2d(inner_nc, outer_nc,
+                                            kernel_size=4, stride=2,
+                                            padding=1, bias=use_bias)
+            elif upsample == "bilinear":
+                upconv = nn.Sequential(nn.UpsamplingBilinear2d(scale_factor=2),
+                                       nn.Conv2d(inner_nc, outer_nc,
+                                        kernel_size=4, bias=use_bias))
             down = [downrelu, downconv]
             up = [uprelu, upconv, upnorm]
             model = down + up
         else:
-            upconv = nn.ConvTranspose2d(inner_nc * 2, outer_nc,
-                                        kernel_size=4, stride=2,
-                                        padding=1, bias=use_bias)
+            if upsample == "convtrans":
+                upconv = nn.ConvTranspose2d(inner_nc * 2, outer_nc,
+                                            kernel_size=4, stride=2,
+                                            padding=1, bias=use_bias)
+            elif upsample == "bilinear":
+                upconv = nn.Sequential(nn.UpsamplingBilinear2d(scale_factor=2),
+                                       nn.Conv2d(inner_nc * 2, outer_nc,
+                                       kernel_size=4, bias=use_bias))
             down = [downrelu, downconv, downnorm]
             up = [uprelu, upconv, upnorm]
             model = down + [submodule] + up
