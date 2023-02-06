@@ -435,10 +435,10 @@ def test_translation(args, eval_ds, model):
     psnr_count = 0
     msssim_sum = 0
     msssim_count = 0
-    if args.G_visual:
-        if os.path.isdir("G_visual"):
-            shutil.rmtree("G_visual")
-        os.mkdir("G_visual")
+    if args.visual_all:
+        if os.path.isdir("visual_all"):
+            shutil.rmtree("visual_all")
+        os.mkdir("visual_all")
     with torch.no_grad():
         # For database use "hard_resize", although it usually has no effect because database images have same resolution
         eval_ds.test_method = "hard_resize"
@@ -459,9 +459,10 @@ def test_translation(args, eval_ds, model):
         for query, database in tqdm(eval_dataloader, ncols=100):
             # Compute features of all images (images contains queries, positives and negatives)
             query_images = query.to(args.device) * 0.5 + 0.5
+            output = model(database.to(args.device))
             output_images = output * 0.5 + 0.5
             database_images = database.to(args.device) * 0.5 + 0.5
-            if args.G_visual:
+            if args.visual_all:
                 vis_image_1 = transforms.ToPILImage()(output_images[0].cpu())
                 vis_image_2 = transforms.ToPILImage()(query_images[0].cpu())
                 vis_image_3 = transforms.ToPILImage()(database_images[0].cpu())
@@ -469,7 +470,7 @@ def test_translation(args, eval_ds, model):
                 dst.paste(vis_image_1, (0, 0))
                 dst.paste(vis_image_2, (0, vis_image_1.height))
                 dst.paste(vis_image_3, (0, vis_image_1.height + vis_image_2.height))
-                dst.save(f"G_visual/G_{psnr_count}.jpg")
+                dst.save(f"visual_all/{psnr_count}.jpg")
             psnr_sum += calculate_psnr(query_images, output_images)
             msssim_sum += ssim.ms_ssim(query_images, output_images, data_range=1)
             psnr_count += 1
@@ -482,18 +483,24 @@ def test_translation(args, eval_ds, model):
             
     return [psnr_sum, msssim_sum], psnr_str
 
-def test_translation_pix2pix(args, eval_ds, model):
+def test_translation_pix2pix(args, eval_ds, model, visual_current=False, notable_image=list(), epoch_num=None):
     """Compute PSNR of the given dataset and compute the recalls."""
-
+    
     model.netG = model.netG.eval()
     psnr_sum = 0
     psnr_count = 0
     msssim_sum = 0
     msssim_count = 0
-    if args.G_visual:
-        if os.path.isdir("G_visual"):
-            shutil.rmtree("G_visual")
-        os.mkdir("G_visual")
+    save_dir = None
+    if args.visual_all:
+        if os.path.isdir("visual_all"):
+            shutil.rmtree("visual_all")
+        os.mkdir("visual_all")
+        save_dir = "visual_all"
+    if visual_current:
+        if not os.path.isdir(os.path.join(args.save_dir, "visual_current")):
+            os.mkdir(os.path.join(args.save_dir, "visual_current"))
+        save_dir = os.path.join(args.save_dir, "visual_current")
     with torch.no_grad():
         # For database use "hard_resize", although it usually has no effect because database images have same resolution
         eval_ds.test_method = "hard_resize"
@@ -510,7 +517,6 @@ def test_translation_pix2pix(args, eval_ds, model):
         )
 
         logging.debug("Calculating PSNR and MSSSIM")
-
         for query, database in tqdm(eval_dataloader, ncols=100):
             # Compute features of all images (images contains queries, positives and negatives)
             model.set_input(database, query)
@@ -519,7 +525,7 @@ def test_translation_pix2pix(args, eval_ds, model):
             query_images = query.to(args.device) * 0.5 + 0.5
             output_images = output * 0.5 + 0.5
             database_images = database.to(args.device) * 0.5 + 0.5
-            if args.G_visual:
+            if args.visual_all or (visual_current == True and psnr_count in notable_image):
                 vis_image_1 = transforms.ToPILImage()(output_images[0].cpu())
                 vis_image_2 = transforms.ToPILImage()(query_images[0].cpu())
                 vis_image_3 = transforms.ToPILImage()(database_images[0].cpu())
@@ -527,7 +533,10 @@ def test_translation_pix2pix(args, eval_ds, model):
                 dst.paste(vis_image_1, (0, 0))
                 dst.paste(vis_image_2, (0, vis_image_1.height))
                 dst.paste(vis_image_3, (0, vis_image_1.height + vis_image_2.height))
-                dst.save(f"G_visual/G_{psnr_count}.jpg")
+                if args.visual_all:
+                    dst.save(f"{save_dir}/{psnr_count}.jpg")
+                elif visual_current:
+                    dst.save(f"{save_dir}/{epoch_num}_{psnr_count}.jpg")
             psnr_sum += calculate_psnr(query_images, output_images)
             msssim_sum += ssim.ms_ssim(query_images, output_images, data_range=1)
             psnr_count += 1

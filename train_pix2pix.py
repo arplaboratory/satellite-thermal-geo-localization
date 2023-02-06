@@ -21,6 +21,7 @@ from model.msssim import ssim
 import wandb
 torch.backends.cudnn.benchmark = True  # Provides a speedup
 
+NOTABLE_IMAGES = [880, 881, 882, 883]
 
 # Initial setup: parser, logging...
 args = parser.parse_arguments()
@@ -137,8 +138,12 @@ for epoch_num in range(start_epoch_num, args.epochs_num):
 
     logging.info(info_str)
 
+    if epoch_num % args.GAN_save_freq == 0:
+        visual_current = True
+    else:
+        visual_current = False
     # Compute rPSNR on validation set
-    psnr, psnr_str = test.test_translation_pix2pix(args, val_ds, model)
+    psnr, psnr_str = test.test_translation_pix2pix(args, val_ds, model, visual_current, notable_image = NOTABLE_IMAGES, epoch_num=epoch_num)
     logging.info(f"PSNR on val set {val_ds}: {psnr_str}")
 
     is_best_psnr = psnr[0] > best_psnr
@@ -214,6 +219,23 @@ for epoch_num in range(start_epoch_num, args.epochs_num):
             )
             break
         
+    if epoch_num % args.GAN_save_freq == 0:
+        util.save_checkpoint(
+        args,
+        {
+            "epoch_num": epoch_num,
+            "model_netD_state_dict": model.netD.state_dict(),
+            "model_netG_state_dict": model.netG.state_dict(),
+            "optimizer_netD_state_dict": model.optimizer_D.state_dict(),
+            "optimizer_netG_state_dict": model.optimizer_G.state_dict(),
+            "psnr": psnr[0],
+            "msssim": psnr[1],
+            "not_improved_num": not_improved_num,
+        },
+        False,
+        filename="last_model.pth",
+        suffix=f"_{epoch_num}",
+    )
 
 logging.info(f"Best PSNR: {best_psnr:.1f}, Best MS-SSIM: {best_msssim:.1f}")
 logging.info(
