@@ -138,7 +138,7 @@ for epoch_num in range(start_epoch_num, args.epochs_num):
 
     logging.info(info_str)
 
-    if epoch_num % args.GAN_save_freq == 0:
+    if args.GAN_save_freq != 0 and epoch_num % args.GAN_save_freq == 0:
         visual_current = True
     else:
         visual_current = False
@@ -219,7 +219,7 @@ for epoch_num in range(start_epoch_num, args.epochs_num):
             )
             break
         
-    if epoch_num % args.GAN_save_freq == 0:
+    if args.GAN_save_freq != 0 and epoch_num % args.GAN_save_freq == 0:
         util.save_checkpoint(
         args,
         {
