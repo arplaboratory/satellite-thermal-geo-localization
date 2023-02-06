@@ -233,7 +233,7 @@ for epoch_num in range(start_epoch_num, args.epochs_num):
             "not_improved_num": not_improved_num,
         },
         False,
-        filename="last_model_{epoch_num}.pth"
+        filename=f"last_model_{epoch_num}.pth"
     )
 
 logging.info(f"Best PSNR: {best_psnr:.1f}, Best MS-SSIM: {best_msssim:.1f}")
