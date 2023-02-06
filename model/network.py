@@ -329,15 +329,14 @@ class pix2pix():
             self.netG = UnetGenerator(input_channel_num, output_channel_num, 8, norm=args.GAN_norm)
         else:
             raise NotImplementedError()
-        if args.D_net == 'patchGAN':
-            self.netD = NLayerDiscriminator(input_channel_num + output_channel_num)
-        else:
-            raise NotImplementedError()
-        
+        self.device = args.device
         if for_training:
+            if args.D_net == 'patchGAN':
+                self.netD = NLayerDiscriminator(input_channel_num + output_channel_num)
+            else:
+                raise NotImplementedError()
             self.optimizer_G = torch.optim.Adam(self.netG.parameters(), lr=args.lr)
             self.optimizer_D = torch.optim.Adam(self.netD.parameters(), lr=args.lr)
-            self.device = args.device
             self.G_loss_lambda = args.G_loss_lambda
             self.G_loss = args.G_loss
             self.criterionGAN = GANLoss("vanilla").to(args.device)
@@ -347,7 +346,8 @@ class pix2pix():
                 self.criterionAUX = MS_SSIM(data_range=1, channel=1 if args.G_gray else 3)
 
     def setup(self):
-        self.netD = self.init_net(self.netD)
+        if hasattr(self, 'netD'):
+            self.netD = self.init_net(self.netD)
         self.netG = self.init_net(self.netG)
 
     def init_net(self, model):
@@ -391,7 +391,9 @@ class pix2pix():
             # Denormalization
             self.real_B = self.real_B * 0.5 + 0.5
             self.fake_B = self.fake_B * 0.5 + 0.5
-        self.loss_G_L1 = self.criterionAUX(self.fake_B, self.real_B) * self.G_loss_lambda
+            self.loss_G_L1 = 1 - self.criterionAUX(self.fake_B, self.real_B) * self.G_loss_lambda
+        else:
+            self.loss_G_L1 = self.criterionAUX(self.fake_B, self.real_B) * self.G_loss_lambda
         # combine loss and calculate gradients
         self.loss_G = self.loss_G_GAN + self.loss_G_L1
         self.loss_G.backward()
