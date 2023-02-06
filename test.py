@@ -487,7 +487,8 @@ def test_translation(args, eval_ds, model):
 def test_translation_pix2pix(args, eval_ds, model):
     """Compute PSNR of the given dataset and compute the recalls."""
 
-    model = model.eval()
+    model.netG = model.netG.eval()
+    model.netD = model.netD.eval()
     psnr_sum = 0
     psnr_count = 0
     msssim_sum = 0
@@ -518,13 +519,13 @@ def test_translation_pix2pix(args, eval_ds, model):
             model.set_input(database, query)
             model.forward()
             output = model.fake_B
-            query_images = query * 0.5 + 0.5
+            query_images = query.to(args.device) * 0.5 + 0.5
             output_images = output * 0.5 + 0.5
-            database_images = database * 0.5 + 0.5
+            database_images = database.to(args.device) * 0.5 + 0.5
             if args.G_visual:
-                vis_image_1 = transforms.ToPILImage()(output_images[0])
-                vis_image_2 = transforms.ToPILImage()(query_images[0])
-                vis_image_3 = transforms.ToPILImage()(database_images[0])
+                vis_image_1 = transforms.ToPILImage()(output_images[0].cpu())
+                vis_image_2 = transforms.ToPILImage()(query_images[0].cpu())
+                vis_image_3 = transforms.ToPILImage()(database_images[0].cpu())
                 dst = Image.new('RGB', (vis_image_1.width, vis_image_1.height + vis_image_2.height + vis_image_3.height))
                 dst.paste(vis_image_1, (0, 0))
                 dst.paste(vis_image_2, (0, vis_image_1.height))

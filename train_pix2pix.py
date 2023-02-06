@@ -59,45 +59,27 @@ logging.info(f"Test set: {test_ds}")
 
 # Initialize model
 if args.G_gray:
-    model = network.pix2pix(args, 3, 1)
+    model = network.pix2pix(args, 3, 1, for_training=True)
 else:   
-    model = network.pix2pix(args, 3, 3)
-model = model.to(args.device)
+    model = network.pix2pix(args, 3, 3, for_training=True)
 
-model = torch.nn.DataParallel(model)
-if torch.cuda.device_count() >= 2:
-    # When using more than 1GPU, use sync_batchnorm for torch.nn.DataParallel
-    model = convert_model(model)
-    model = model.to(args.device)
+model.setup()
 
-# Setup Optimizer and Loss
-# Pix2pix has internal optimizer
-if args.optim == "adam":
-    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
-elif args.optim == "sgd":
-    optimizer = torch.optim.SGD(
-        model.parameters(), lr=args.lr, momentum=0.9, weight_decay=args.weight_decay
-    )
-else:
-    raise NotImplementedError()
-    
 # Resume model, optimizer, and other training parameters
 if args.resume:
     (
         model,
-        optimizer,
+        _,
         best_psnr,
         start_epoch_num,
         not_improved_num,
-    ) = util.resume_train(args, model, optimizer)
+    ) = util.resume_train(args, model)
     logging.info(
         f"Resuming from epoch {start_epoch_num} with best PSNR {best_psnr:.1f}",
     )
 else:
     best_psnr = start_epoch_num = not_improved_num = 0
 best_msssim = 0
-
-model = model.eval()
 
 # Training loop
 for epoch_num in range(start_epoch_num, args.epochs_num):
@@ -124,16 +106,17 @@ for epoch_num in range(start_epoch_num, args.epochs_num):
             drop_last=True,
         )
 
-        model = model.train()
+        model.netG = model.netG.train()
+        model.netD = model.netD.train()
 
         # images shape: (train_batch_size*12)*3*H*W ; by default train_batch_size=4, H=512, W=512
         # pairs_local_indexes shape: (train_batch_size*10)*3 ; because 10 pairs per query
         for query, database in tqdm(pairs_dl, ncols=100):
             # Compute features of all images (images contains queries, positives and negatives)
             model.set_input(database, query)
+            model.optimize_parameters()
             loss_GAN = model.loss_G_GAN
             loss_AUX = model.loss_G_L1
-            model.optimize_parameters()
 
             # Keep track of all losses by appending them to epoch_losses
             batch_loss_GAN = loss_GAN.item()
@@ -176,8 +159,10 @@ for epoch_num in range(start_epoch_num, args.epochs_num):
         args,
         {
             "epoch_num": epoch_num,
-            "model_state_dict": model.state_dict(),
-            "optimizer_state_dict": optimizer.state_dict(),
+            "model_netD_state_dict": model.netD.state_dict(),
+            "model_netG_state_dict": model.netG.state_dict(),
+            "optimizer_netD_state_dict": model.optimizer_D.state_dict(),
+            "optimizer_netG_state_dict": model.optimizer_G.state_dict(),
             "psnr": psnr[0],
             "msssim": psnr[1],
             "best_psnr": best_psnr,
@@ -191,8 +176,10 @@ for epoch_num in range(start_epoch_num, args.epochs_num):
         args,
         {
             "epoch_num": epoch_num,
-            "model_state_dict": model.state_dict(),
-            "optimizer_state_dict": optimizer.state_dict(),
+            "model_netD_state_dict": model.netD.state_dict(),
+            "model_netG_state_dict": model.netG.state_dict(),
+            "optimizer_netD_state_dict": model.optimizer_D.state_dict(),
+            "optimizer_netG_state_dict": model.optimizer_G.state_dict(),
             "psnr": psnr[0],
             "msssim": psnr[1],
             "best_msssim": best_msssim,
@@ -234,12 +221,12 @@ logging.info(
 )
 
 # Test best model on test set
-best_model_state_dict = torch.load(join(args.save_dir, "best_model.pth"))[
-    "model_state_dict"
-]
-model.load_state_dict(best_model_state_dict)
+# best_model_state_dict = torch.load(join(args.save_dir, "best_model.pth"))[
+#     "model_state_dict"
+# ]
+# model.load_state_dict(best_model_state_dict)
 
-psnr, psnr_str = test.test_translation_pix2pix(
-    args, test_ds, model)
+# psnr, psnr_str = test.test_translation_pix2pix(
+#     args, test_ds, model)
         
-logging.info(f"PSNR on {test_ds}: {psnr_str}")
+# logging.info(f"PSNR on {test_ds}: {psnr_str}")

@@ -17,6 +17,7 @@ from model.non_local import NonLocalBlock
 from model.functional import ReverseLayerF
 from model.pix2pix_networks.networks import UnetGenerator, GANLoss, NLayerDiscriminator
 from model.msssim.ssim import MS_SSIM
+from model.sync_batchnorm import convert_model
 
 # Pretrained models on Google Landmarks v2 and Places 365
 PRETRAINED_MODELS = {
@@ -108,7 +109,7 @@ class GeoLocalizationNet(nn.Module):
         return domain_classifier
 
 
-    def forward(self, x, train=False, alpha=1.0):
+    def forward(self, x, is_train=False, alpha=1.0):
         x = self.backbone(x)
         if self.self_att:
             x = self.non_local(x)
@@ -118,7 +119,7 @@ class GeoLocalizationNet(nn.Module):
         if hasattr(self, "conv_layer"):
             x = self.conv_layer(x)
         x_after = self.aggregation(x)
-        if train is True:
+        if is_train is True:
             if self.DA == 'none':
                 return x_after
             elif self.DA.startswith('DANN_before'):
@@ -321,30 +322,42 @@ class GenerativeNet(nn.Module):
         return x
     
 
-class pix2pix(nn.Module):
-    def __init__(self, args, input_channel_num, output_channel_num):
+class pix2pix():
+    def __init__(self, args, input_channel_num, output_channel_num, for_training=False):
         super().__init__()
-        self.device = args.device
-        self.G_loss_lambda = args.G_loss_lambda
-        self.G_loss = args.G_loss
-        self.criterionGAN = GANLoss("vanilla").to(args.device)
-        if args.G_loss == 'L1':
-            self.criterionAUX = torch.nn.L1Loss()
-        elif args.G_loss == 'MSSSIM':
-            self.criterionAUX = MS_SSIM(data_range=1, channel=1 if args.G_gray else 3)
         if args.G_net == 'unet':
             self.netG = UnetGenerator(input_channel_num, output_channel_num, 8, norm=args.GAN_norm)
         else:
             raise NotImplementedError()
         if args.D_net == 'patchGAN':
-            self.netG = UnetGenerator(input_channel_num, output_channel_num, 8, norm=args.GAN_norm)
+            self.netD = NLayerDiscriminator(input_channel_num + output_channel_num)
         else:
             raise NotImplementedError()
-        self.netG = UnetGenerator(input_channel_num, output_channel_num, 8)
-        self.netD = NLayerDiscriminator(input_channel_num)
-        self.optimizer_G = torch.optim.Adam(self.netG.parameters(), lr=args.lr)
-        self.optimizer_D = torch.optim.Adam(self.netD.parameters(), lr=args.lr)
+        
+        if for_training:
+            self.optimizer_G = torch.optim.Adam(self.netG.parameters(), lr=args.lr)
+            self.optimizer_D = torch.optim.Adam(self.netD.parameters(), lr=args.lr)
+            self.device = args.device
+            self.G_loss_lambda = args.G_loss_lambda
+            self.G_loss = args.G_loss
+            self.criterionGAN = GANLoss("vanilla").to(args.device)
+            if args.G_loss == 'L1':
+                self.criterionAUX = torch.nn.L1Loss()
+            elif args.G_loss == 'MSSSIM':
+                self.criterionAUX = MS_SSIM(data_range=1, channel=1 if args.G_gray else 3)
 
+    def setup(self):
+        self.netD = self.init_net(self.netD)
+        self.netG = self.init_net(self.netG)
+
+    def init_net(self, model):
+        model = torch.nn.DataParallel(model)
+        if torch.cuda.device_count() >= 2:
+            # When using more than 1GPU, use sync_batchnorm for torch.nn.DataParallel
+            model = convert_model(model)
+            model = model.to(self.device)
+        return model
+    
     def set_input(self, A, B):
         self.real_A = A.to(self.device)
         self.real_B = B.to(self.device)
