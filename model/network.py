@@ -335,8 +335,8 @@ class pix2pix():
                 self.netD = NLayerDiscriminator(input_channel_num + output_channel_num)
             else:
                 raise NotImplementedError()
-            self.optimizer_G = torch.optim.Adam(self.netG.parameters(), lr=args.lr, beta=(0.5, 0.999))
-            self.optimizer_D = torch.optim.Adam(self.netD.parameters(), lr=args.lr, beta=(0.5, 0.999))
+            self.optimizer_G = torch.optim.Adam(self.netG.parameters(), lr=args.lr, betas=(0.5, 0.999))
+            self.optimizer_D = torch.optim.Adam(self.netD.parameters(), lr=args.lr, betas=(0.5, 0.999))
             self.G_loss_lambda = args.G_loss_lambda
             self.G_loss = args.G_loss
             self.criterionGAN = GANLoss("vanilla").to(args.device)
