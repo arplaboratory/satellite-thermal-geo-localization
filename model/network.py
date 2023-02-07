@@ -339,7 +339,7 @@ class pix2pix():
             self.optimizer_D = torch.optim.Adam(self.netD.parameters(), lr=args.lr, betas=(0.5, 0.999))
             self.G_loss_lambda = args.G_loss_lambda
             self.G_loss = args.G_loss
-            self.criterionGAN = GANLoss("vanilla").to(args.device)
+            self.criterionGAN = GANLoss(args.GAN_mode).to(args.device)
             if args.G_loss == 'L1':
                 self.criterionAUX = torch.nn.L1Loss()
             elif args.G_loss == 'MSSSIM':

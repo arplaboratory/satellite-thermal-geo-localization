@@ -9,6 +9,13 @@ def parse_arguments():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument(
+        "--GAN_mode",
+        type=str,
+        default="vanilla",
+        choices=["vanilla", "lsgan"],
+        help="Choices of GAN loss"
+    )
+    parser.add_argument(
         "--GAN_upsample",
         type=str,
         default="convtrans",
