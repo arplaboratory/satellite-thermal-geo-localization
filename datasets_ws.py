@@ -254,6 +254,19 @@ class BaseDataset(data.Dataset):
         ):
             self.database_folder_h5_df.close()
             self.queries_folder_h5_df.close()
+        
+    def find_black_region(self, split):
+        if split is not "train":
+            raise ValueError("Finding black region is only available for training")
+        # Only for thermal
+        queries_folder_h5_df = h5py.File(self.queries_folder_h5_path, "r")
+        queries_with_black_region = []
+        for index, path in enumerate(self.queries_paths):
+            image_index = self.queries_name_dict[path]
+            image = queries_folder_h5_df["image_data"]
+            if np.count_nonzero(image==0):
+                queries_with_black_region.append(index)
+        return queries_with_black_region
 
 class PCADataset(BaseDataset):
     def __init__(
@@ -379,6 +392,20 @@ class TripletsDataset(BaseDataset):
         self.queries_paths = np.delete(
             self.queries_paths, queries_without_any_hard_positive
         )
+
+        # Remove queries with black region
+        queries_with_black_region = self.find_black_region(split)
+        self.hard_positives_per_query = np.delete(
+            self.hard_positives_per_query, queries_with_black_region
+        )
+        self.queries_paths = np.delete(
+            self.queries_paths, queries_with_black_region
+        )
+        if len(queries_with_black_region) != 0:
+            logging.info(
+                f"There are {len(queries_with_black_region)} queries with black regions "
+                + "within the training set. They won't be considered."
+            )
 
         # Recompute images_paths and queries_num because some queries might have been removed
         self.images_paths = list(self.database_paths) + \
@@ -948,6 +975,21 @@ class TranslationDataset(BaseDataset):
                 f"There are {len(queries_without_any_hard_positive)} queries without any positives "
                 + "within the training set. They won't be considered as they're useless for training."
             )
+
+        # Remove queries with black region
+        queries_with_black_region = self.find_black_region(split)
+        self.hard_positives_per_query = np.delete(
+            self.hard_positives_per_query, queries_with_black_region
+        )
+        self.queries_paths = np.delete(
+            self.queries_paths, queries_with_black_region
+        )
+        if len(queries_with_black_region) != 0:
+            logging.info(
+                f"There are {len(queries_with_black_region)} queries with black regions "
+                + "within the training set. They won't be considered."
+            )
+
         # Remove queries without positives
         self.hard_positives_per_query = np.delete(
             self.hard_positives_per_query, queries_without_any_hard_positive
