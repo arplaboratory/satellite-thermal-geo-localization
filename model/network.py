@@ -326,7 +326,7 @@ class pix2pix():
     def __init__(self, args, input_channel_num, output_channel_num, for_training=False):
         super().__init__()
         if args.G_net == 'unet':
-            self.netG = UnetGenerator(input_channel_num, output_channel_num, 8, norm=args.GAN_norm)
+            self.netG = UnetGenerator(input_channel_num, output_channel_num, 8, norm=args.GAN_norm, upsample=args.GAN_upsample)
         else:
             raise NotImplementedError()
         self.device = args.device
