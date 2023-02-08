@@ -173,10 +173,10 @@ class BaseDataset(data.Dataset):
         if self.is_index_in_queries(index):
             if self.args.G_contrast:
                 img = self.query_transform(
-                    transforms.functional.adjust_contrast(self._find_img_in_h5(query_index, "queries"), contrast_factor=3))
+                    transforms.functional.adjust_contrast(self._find_img_in_h5(index, "queries"), contrast_factor=3))
             else:
                 img = self.query_transform(
-                    self._find_img_in_h5(query_index, "queries"))
+                    self._find_img_in_h5(index, "queries"))
             img = self.query_transform(img)
         else:
             img = self._find_img_in_h5(index)
