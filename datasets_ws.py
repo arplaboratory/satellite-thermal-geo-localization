@@ -173,11 +173,10 @@ class BaseDataset(data.Dataset):
         if self.is_index_in_queries(index):
             if self.args.G_contrast:
                 img = self.query_transform(
-                    transforms.functional.adjust_contrast(self._find_img_in_h5(index, "queries"), contrast_factor=3))
+                    transforms.functional.adjust_contrast(self._find_img_in_h5(index), contrast_factor=3))
             else:
                 img = self.query_transform(
-                    self._find_img_in_h5(index, "queries"))
-            img = self.query_transform(img)
+                    self._find_img_in_h5(index))
         else:
             img = self._find_img_in_h5(index)
             img = base_transform(img)
@@ -420,20 +419,6 @@ class TripletsDataset(BaseDataset):
         self.queries_paths = np.delete(
             self.queries_paths, queries_without_any_hard_positive
         )
-
-        # Remove queries with black region
-        queries_with_black_region = self.find_black_region()
-        self.hard_positives_per_query = np.delete(
-            self.hard_positives_per_query, queries_with_black_region
-        )
-        self.queries_paths = np.delete(
-            self.queries_paths, queries_with_black_region
-        )
-        if len(queries_with_black_region) != 0:
-            logging.info(
-                f"There are {len(queries_with_black_region)} queries with black regions "
-                + "within the training set. They won't be considered."
-            )
 
         # Recompute images_paths and queries_num because some queries might have been removed
         self.images_paths = list(self.database_paths) + \
@@ -987,7 +972,6 @@ class TranslationDataset(BaseDataset):
             ]
         )
 
-        self.database_transform = self.resized_transform
         # Find hard_positives_per_query, which are within train_positives_dist_threshold (0.1 meters)
         knn = NearestNeighbors(n_jobs=-1)
         knn.fit(self.database_utms)
@@ -1009,6 +993,13 @@ class TranslationDataset(BaseDataset):
                 f"There are {len(queries_without_any_hard_positive)} queries without any positives "
                 + "within the training set. They won't be considered as they're useless for training."
             )
+        # Remove queries without positives
+        self.hard_positives_per_query = np.delete(
+            self.hard_positives_per_query, queries_without_any_hard_positive
+        )
+        self.queries_paths = np.delete(
+            self.queries_paths, queries_without_any_hard_positive
+        )
 
         # Remove queries with black region
         queries_with_black_region = self.find_black_region()
@@ -1023,14 +1014,6 @@ class TranslationDataset(BaseDataset):
                 f"There are {len(queries_with_black_region)} queries with black regions "
                 + "within the training set. They won't be considered."
             )
-
-        # Remove queries without positives
-        self.hard_positives_per_query = np.delete(
-            self.hard_positives_per_query, queries_without_any_hard_positive
-        )
-        self.queries_paths = np.delete(
-            self.queries_paths, queries_without_any_hard_positive
-        )
 
         # Recompute images_paths and queries_num because some queries might have been removed
         self.images_paths = list(self.database_paths) + \
@@ -1055,7 +1038,8 @@ class TranslationDataset(BaseDataset):
         else:
             query = self.query_transform(
                 self._find_img_in_h5(query_index, "queries"))
-        positive = self.database_transform(
+            
+        positive = self.resized_transform(
             self._find_img_in_h5(best_positive_index, "database")
         )
         return query, positive
