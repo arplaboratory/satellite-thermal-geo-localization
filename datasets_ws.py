@@ -153,6 +153,16 @@ class BaseDataset(data.Dataset):
         database_folder_h5_df.close()
         queries_folder_h5_df.close()
 
+        identity_transform = transforms.Lambda(lambda x: x)
+        self.query_transform = transforms.Compose(
+            [
+                transforms.Grayscale(num_output_channels=3)
+                if self.args.G_gray
+                else identity_transform,
+                base_transform
+            ]
+        )
+
     def __getitem__(self, index):
         # Init
         if self.database_folder_h5_df is None:
@@ -160,8 +170,17 @@ class BaseDataset(data.Dataset):
                 self.database_folder_h5_path, "r")
             self.queries_folder_h5_df = h5py.File(
                 self.queries_folder_h5_path, "r")
-        img = self._find_img_in_h5(index)
-        img = base_transform(img)
+        if self.is_index_in_queries(index):
+            if self.args.G_contrast:
+                img = self.query_transform(
+                    transforms.functional.adjust_contrast(self._find_img_in_h5(index, "queries"), contrast_factor=3))
+            else:
+                img = self.query_transform(
+                    self._find_img_in_h5(index, "queries"))
+            img = self.query_transform(img)
+        else:
+            img = self._find_img_in_h5(index)
+            img = base_transform(img)
         # With database images self.test_method should always be "hard_resize"
         if self.test_method == "hard_resize":
             # self.test_method=="hard_resize" is the default, resizes all images to the same size.
@@ -268,6 +287,12 @@ class BaseDataset(data.Dataset):
         queries_folder_h5_df.close()
         return queries_with_black_region
 
+    def is_index_in_queries(self, index):
+        if index >= self.database_num:
+            return True
+        else:
+            return False
+
 class PCADataset(BaseDataset):
     def __init__(
         self, args, datasets_folder="datasets", dataset_name="pitts30k"
@@ -337,6 +362,9 @@ class TripletsDataset(BaseDataset):
 
         self.query_transform = transforms.Compose(
             [
+                transforms.Grayscale(num_output_channels=3)
+                if self.args.G_gray
+                else identity_transform,
                 transforms.ColorJitter(brightness=args.brightness)
                 if args.brightness != None
                 else identity_transform,
@@ -459,8 +487,13 @@ class TripletsDataset(BaseDataset):
                                                   1, self.negs_num_per_query)
         )
 
-        query = self.query_transform(
-            self._find_img_in_h5(query_index, "queries"))
+        if self.args.G_contrast:
+            query = self.query_transform(
+                transforms.functional.adjust_contrast(self._find_img_in_h5(query_index, "queries"), contrast_factor=3))
+        else:
+            query = self.query_transform(
+                self._find_img_in_h5(query_index, "queries"))
+                
         positive = self.resized_transform(
             self._find_img_in_h5(best_positive_index, "database")
         )
