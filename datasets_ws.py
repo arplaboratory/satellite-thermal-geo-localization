@@ -935,6 +935,7 @@ class TranslationDataset(BaseDataset):
         self.is_inference = False
 
         identity_transform = transforms.Lambda(lambda x: x)
+        self.resize = args.GAN_resize
         self.resized_transform = transforms.Compose(
             [
                 transforms.Resize(self.resize)

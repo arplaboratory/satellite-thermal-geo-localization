@@ -9,6 +9,13 @@ def parse_arguments():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument(
+        "--GAN_resize",
+        type=int,
+        default=[512, 512],
+        nargs=2,
+        help="Resizing shape for images (HxW).",
+    )
+    parser.add_argument(
         "--GAN_mode",
         type=str,
         default="vanilla",
