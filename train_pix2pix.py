@@ -21,7 +21,7 @@ from model.msssim import ssim
 import wandb
 torch.backends.cudnn.benchmark = True  # Provides a speedup
 
-NOTABLE_IMAGES = [880, 881, 882, 883]
+NOTABLE_IMAGES = [880, 881, 882, 883, 884, 885, 886, 887, 888, 889]
 
 # Initial setup: parser, logging...
 args = parser.parse_arguments()
@@ -46,16 +46,16 @@ logging.debug(
 
 train_ds = None
 train_ds = datasets_ws.TranslationDataset(
-    args, args.datasets_folder, args.dataset_name, "train")
+    args, args.datasets_folder, args.dataset_name, "train", clean_black_region=True)
 
 logging.info(f"Train query set: {train_ds}")
 
 val_ds = datasets_ws.TranslationDataset(
-    args, args.datasets_folder, args.dataset_name, "val")
+    args, args.datasets_folder, args.dataset_name, "val", clean_black_region=False)
 logging.info(f"Val set: {val_ds}")
 
 test_ds = datasets_ws.TranslationDataset(
-    args, args.datasets_folder, args.dataset_name, "test")
+    args, args.datasets_folder, args.dataset_name, "test", clean_black_region=False)
 logging.info(f"Test set: {test_ds}")
 
 # Initialize model

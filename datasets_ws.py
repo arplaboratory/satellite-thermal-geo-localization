@@ -948,6 +948,7 @@ class TranslationDataset(BaseDataset):
         datasets_folder="datasets",
         dataset_name="pitts30k",
         split="train",
+        clean_black_region=False
     ):
         super().__init__(args, datasets_folder, dataset_name, split)
         self.is_inference = False
@@ -1001,19 +1002,20 @@ class TranslationDataset(BaseDataset):
             self.queries_paths, queries_without_any_hard_positive
         )
 
-        # Remove queries with black region
-        queries_with_black_region = self.find_black_region()
-        self.hard_positives_per_query = np.delete(
-            self.hard_positives_per_query, queries_with_black_region
-        )
-        self.queries_paths = np.delete(
-            self.queries_paths, queries_with_black_region
-        )
-        if len(queries_with_black_region) != 0:
-            logging.info(
-                f"There are {len(queries_with_black_region)} queries with black regions "
-                + "within the training set. They won't be considered."
+        if clean_black_region:
+            # Remove queries with black region
+            queries_with_black_region = self.find_black_region()
+            self.hard_positives_per_query = np.delete(
+                self.hard_positives_per_query, queries_with_black_region
             )
+            self.queries_paths = np.delete(
+                self.queries_paths, queries_with_black_region
+            )
+            if len(queries_with_black_region) != 0:
+                logging.info(
+                    f"There are {len(queries_with_black_region)} queries with black regions "
+                    + "within the training set. They won't be considered."
+                )
 
         # Recompute images_paths and queries_num because some queries might have been removed
         self.images_paths = list(self.database_paths) + \
