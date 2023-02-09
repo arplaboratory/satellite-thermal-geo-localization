@@ -427,9 +427,9 @@ class pix2pix():
         self.optimizer_G.step()             # update G's weights
 
     def update_learning_rate(self):
-            """Update learning rates for all the networks; called at the end of every epoch"""
-            old_lr = self.optimizer_G.param_groups[0]['lr']
-            self.scheduler_G.step()
-            self.scheduler_D.step()
-            lr = self.optimizer_G.param_groups[0]['lr']
-            logging.debug('learning rate %.7f -> %.7f' % (old_lr, lr))
+        """Update learning rates for all the networks; called at the end of every epoch"""
+        old_lr = self.optimizer_G.param_groups[0]['lr']
+        self.scheduler_G.step()
+        self.scheduler_D.step()
+        lr = self.optimizer_G.param_groups[0]['lr']
+        logging.debug('learning rate %.7f -> %.7f' % (old_lr, lr))
