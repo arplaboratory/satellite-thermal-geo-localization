@@ -1,7 +1,30 @@
 # https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix/blob/master/models/networks.py
 import torch
 import torch.nn as nn
+import logging
+from torch.optim import lr_scheduler
 
+def get_scheduler(optimizer, args):
+    """Return a learning rate scheduler
+    Parameters:
+        optimizer          -- the optimizer of the network
+        opt (option class) -- stores all the experiment flags; needs to be a subclass of BaseOptions．　
+                              opt.lr_policy is the name of learning rate policy: linear | step | plateau | cosine
+    For 'linear', we keep the same learning rate for the first <opt.n_epochs> epochs
+    and linearly decay the rate to zero over the next <opt.n_epochs_decay> epochs.
+    For other schedulers (step, plateau, and cosine), we use the default PyTorch schedulers.
+    See https://pytorch.org/docs/stable/optim.html for more details.
+    """
+    if args.GAN_lr_policy == 'linear':
+        def lambda_rule(epoch):
+            # Make sure lr_l is larger than 0
+            lr_l = max(1.0 - max(0, epoch - (args.epochs_num - args.GAN_epochs_decay)) / float(args.GAN_epochs_decay + 1), 0)
+            return lr_l
+        scheduler = lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda_rule)
+    else:
+        raise NotImplementedError()
+    return scheduler
+    
 class GANLoss(nn.Module):
     """Define different GAN objectives.
     The GANLoss class abstracts away the need to create the target label tensor
@@ -128,8 +151,8 @@ class UnetSkipConnectionBlock(nn.Module):
             downnorm = nn.BatchNorm2d(inner_nc)
             upnorm = nn.BatchNorm2d(outer_nc)
         elif norm == "instance":
-            downnorm = nn.InstanceNorm2d(inner_nc, affine=False, track_running_stats=False)
-            upnorm = nn.InstanceNorm2d(outer_nc, affine=False, track_running_stats=False)
+            downnorm = nn.InstanceNorm2d(inner_nc)
+            upnorm = nn.InstanceNorm2d(outer_nc)
         else:
             raise NotImplementedError()
 
@@ -141,7 +164,7 @@ class UnetSkipConnectionBlock(nn.Module):
             elif upsample == "bilinear":
                 upconv = nn.Sequential(nn.UpsamplingBilinear2d(scale_factor=2),
                                        nn.Conv2d(inner_nc * 2, outer_nc,
-                                       kernel_size=4))
+                                       kernel_size=5, padding=2))
             down = [downconv]
             up = [uprelu, upconv, nn.Tanh()]
             model = down + [submodule] + up
@@ -153,7 +176,7 @@ class UnetSkipConnectionBlock(nn.Module):
             elif upsample == "bilinear":
                 upconv = nn.Sequential(nn.UpsamplingBilinear2d(scale_factor=2),
                                        nn.Conv2d(inner_nc, outer_nc,
-                                        kernel_size=4, bias=use_bias))
+                                        kernel_size=5, padding=2, bias=use_bias))
             down = [downrelu, downconv]
             up = [uprelu, upconv, upnorm]
             model = down + up
@@ -165,7 +188,7 @@ class UnetSkipConnectionBlock(nn.Module):
             elif upsample == "bilinear":
                 upconv = nn.Sequential(nn.UpsamplingBilinear2d(scale_factor=2),
                                        nn.Conv2d(inner_nc * 2, outer_nc,
-                                       kernel_size=4, bias=use_bias))
+                                       kernel_size=5, padding=2, bias=use_bias))
             down = [downrelu, downconv, downnorm]
             up = [uprelu, upconv, upnorm]
             model = down + [submodule] + up
@@ -204,7 +227,7 @@ class NLayerDiscriminator(nn.Module):
             nf_mult = min(2 ** n, 8)
             sequence += [
                 nn.Conv2d(ndf * nf_mult_prev, ndf * nf_mult, kernel_size=kw, stride=2, padding=padw, bias=use_bias),
-                nn.BatchNorm2d(ndf * nf_mult) if norm == "batch" else nn.InstanceNorm2d(ndf * nf_mult, affine=False, track_running_stats=False),
+                nn.BatchNorm2d(ndf * nf_mult) if norm == "batch" else nn.InstanceNorm2d(ndf * nf_mult),
                 nn.LeakyReLU(0.2, True)
             ]
 
@@ -212,7 +235,7 @@ class NLayerDiscriminator(nn.Module):
         nf_mult = min(2 ** n_layers, 8)
         sequence += [
             nn.Conv2d(ndf * nf_mult_prev, ndf * nf_mult, kernel_size=kw, stride=1, padding=padw, bias=use_bias),
-            nn.BatchNorm2d(ndf * nf_mult) if norm == "batch" else nn.InstanceNorm2d(ndf * nf_mult, affine=False, track_running_stats=False),
+            nn.BatchNorm2d(ndf * nf_mult) if norm == "batch" else nn.InstanceNorm2d(ndf * nf_mult),
             nn.LeakyReLU(0.2, True)
         ]
 

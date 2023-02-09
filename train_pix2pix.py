@@ -91,6 +91,8 @@ for epoch_num in range(start_epoch_num, args.epochs_num):
     epoch_losses_AUX = np.zeros((0, 1), dtype=np.float32)
     # How many loops should an epoch last (default is 5000/1000=5)
     loops_num = math.ceil(args.queries_per_epoch / args.cache_refresh_rate)
+    model.update_learning_rate() # Update the learning rate at the beginning
+
     for loop_num in range(loops_num):
         logging.debug(f"Cache: {loop_num} / {loops_num}")
 
@@ -112,7 +114,7 @@ for epoch_num in range(start_epoch_num, args.epochs_num):
 
         # images shape: (train_batch_size*12)*3*H*W ; by default train_batch_size=4, H=512, W=512
         # pairs_local_indexes shape: (train_batch_size*10)*3 ; because 10 pairs per query
-        for query, database in tqdm(pairs_dl, ncols=100):
+        for query, database, _, _ in tqdm(pairs_dl, ncols=100):
             # Compute features of all images (images contains queries, positives and negatives)
             model.set_input(database, query)
             model.optimize_parameters()

@@ -15,7 +15,7 @@ from model.normalization import L2Norm
 import model.aggregation as aggregation
 from model.non_local import NonLocalBlock
 from model.functional import ReverseLayerF
-from model.pix2pix_networks.networks import UnetGenerator, GANLoss, NLayerDiscriminator
+from model.pix2pix_networks.networks import UnetGenerator, GANLoss, NLayerDiscriminator, get_scheduler
 from model.msssim.ssim import MS_SSIM
 from model.sync_batchnorm import convert_model
 
@@ -337,6 +337,8 @@ class pix2pix():
                 raise NotImplementedError()
             self.optimizer_G = torch.optim.Adam(self.netG.parameters(), lr=args.lr, betas=(0.5, 0.999))
             self.optimizer_D = torch.optim.Adam(self.netD.parameters(), lr=args.lr, betas=(0.5, 0.999))
+            self.scheduler_G = get_scheduler(self.optimizer_G, args)
+            self.scheduler_D = get_scheduler(self.optimizer_D, args)
             self.G_loss_lambda = args.G_loss_lambda
             self.G_loss = args.G_loss
             self.criterionGAN = GANLoss(args.GAN_mode).to(args.device)
@@ -423,3 +425,11 @@ class pix2pix():
         self.optimizer_G.zero_grad()        # set G's gradients to zero
         self.backward_G()                   # calculate graidents for G
         self.optimizer_G.step()             # update G's weights
+
+    def update_learning_rate(self):
+            """Update learning rates for all the networks; called at the end of every epoch"""
+            old_lr = self.optimizer_G.param_groups[0]['lr']
+            self.scheduler_G.step()
+            self.scheduler_D.step()
+            lr = self.optimizer_G.param_groups[0]['lr']
+            logging.debug('learning rate %.7f -> %.7f' % (old_lr, lr))
