@@ -90,7 +90,7 @@ class GANLoss(nn.Module):
 class UnetGenerator(nn.Module):
     """Create a Unet-based generator"""
 
-    def __init__(self, input_nc, output_nc, num_downs, ngf=64, norm="batch", upsample="convtrans", use_tanh=True):
+    def __init__(self, input_nc, output_nc, num_downs, ngf=64, norm="batch", upsample="bilinear", use_tanh=True):
         """Construct a Unet generator
         Parameters:
             input_nc (int)  -- the number of channels in input images
@@ -125,7 +125,7 @@ class UnetSkipConnectionBlock(nn.Module):
     """
 
     def __init__(self, outer_nc, inner_nc, input_nc=None,
-                 submodule=None, outermost=False, innermost=False, norm="batch", upsample="convtrans", use_tanh=True):
+                 submodule=None, outermost=False, innermost=False, norm="batch", upsample="bilinear", use_tanh=True):
         """Construct a Unet submodule with skip connections.
         Parameters:
             outer_nc (int) -- the number of filters in the outer conv layer
