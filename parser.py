@@ -9,6 +9,11 @@ def parse_arguments():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument(
+        "--G_tanh",
+        action="store_true",
+        help="tanh for G",
+    )
+    parser.add_argument(
         "--GAN_epochs_decay",
         type=int,
         default=0,

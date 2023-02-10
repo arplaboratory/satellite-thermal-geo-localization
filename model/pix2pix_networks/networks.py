@@ -166,7 +166,10 @@ class UnetSkipConnectionBlock(nn.Module):
                                        nn.Conv2d(inner_nc * 2, outer_nc,
                                        kernel_size=5, padding=2))
             down = [downconv]
-            up = [uprelu, upconv, nn.Tanh()]
+            if arg.G_tanh:
+                up = [uprelu, upconv, nn.Tanh()]
+            else:
+                up = [uprelu, upconv]
             model = down + [submodule] + up
         elif innermost:
             if upsample == "convtrans":

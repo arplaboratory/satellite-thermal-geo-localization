@@ -395,8 +395,8 @@ class pix2pix():
         # Second, G(A) = B
         if self.G_loss == 'MSSSIM':
             # Denormalization
-            self.real_B = self.real_B * 0.5 + 0.5
-            self.fake_B = self.fake_B * 0.5 + 0.5
+            self.real_B = torch.clamp(self.real_B, min=-1, max=1) * 0.5 + 0.5
+            self.fake_B = torch.clamp(self.fake_B, min=-1, max=1) * 0.5 + 0.5
             self.loss_G_L1 = (1 - self.criterionAUX(self.fake_B, self.real_B)) * self.G_loss_lambda
         else:
             self.loss_G_L1 = self.criterionAUX(self.fake_B, self.real_B) * self.G_loss_lambda
