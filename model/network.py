@@ -343,7 +343,6 @@ class pix2pix():
             self.scheduler_G = get_scheduler(self.optimizer_G, args)
             self.scheduler_D = get_scheduler(self.optimizer_D, args)
             self.G_loss_lambda = args.G_loss_lambda
-            self.G_loss = args.G_loss
             self.criterionGAN = GANLoss(args.GAN_mode).to(args.device)
             self.criterionAUX = torch.nn.L1Loss()
 
