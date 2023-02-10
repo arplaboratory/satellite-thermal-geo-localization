@@ -9,6 +9,13 @@ def parse_arguments():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument(
+        "--G_test_norm",
+        type=str,
+        default="batch",
+        choices=["batch", "instance"],
+        help="Test norm for G",
+    )
+    parser.add_argument(
         "--G_tanh",
         action="store_true",
         help="tanh for G",

@@ -483,10 +483,13 @@ def test_translation(args, eval_ds, model):
             
     return [psnr_sum, msssim_sum], psnr_str
 
-def test_translation_pix2pix(args, eval_ds, model, visual_current=False, notable_image=list(), epoch_num=None):
+def test_translation_pix2pix(args, eval_ds, model, visual_current=False, notable_image=list(), epoch_num=None, generate_h5_files=False):
     """Compute PSNR of the given dataset and compute the recalls."""
     
-    model.netG = model.netG.eval()
+    if args.G_test_norm == "batch":
+        model.netG = model.netG.eval()
+    elif args.G_test_norm == "instance":
+        model.netG = model.netG.train()
     psnr_sum = 0
     psnr_count = 0
     msssim_sum = 0
@@ -514,14 +517,16 @@ def test_translation_pix2pix(args, eval_ds, model, visual_current=False, notable
             num_workers=args.num_workers,
             batch_size=1,
             pin_memory=(args.device == "cuda"),
+            shuffle=False
         )
 
         logging.debug("Calculating PSNR and MSSSIM")
-        for query, database in tqdm(eval_dataloader, ncols=100):
+        for query, database, query_index, database_index in tqdm(eval_dataloader, ncols=100):
             # Compute features of all images (images contains queries, positives and negatives)
             model.set_input(database, query)
             model.forward()
             output = model.fake_B
+            output = torch.clamp(output, min=-1, max=1)
             query_images = query.to(args.device) * 0.5 + 0.5
             output_images = output * 0.5 + 0.5
             database_images = database.to(args.device) * 0.5 + 0.5
