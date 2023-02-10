@@ -327,12 +327,16 @@ class pix2pix():
         super().__init__()
         if args.G_net == 'unet':
             self.netG = UnetGenerator(input_channel_num, output_channel_num, 8, norm=args.GAN_norm, upsample=args.GAN_upsample)
+        elif args.G_net == 'unet_deep':
+            self.netG = UnetGenerator(input_channel_num, output_channel_num, 9, norm=args.GAN_norm, upsample=args.GAN_upsample)
         else:
             raise NotImplementedError()
         self.device = args.device
         if for_training:
             if args.D_net == 'patchGAN':
                 self.netD = NLayerDiscriminator(input_channel_num + output_channel_num)
+            elif args.D_net == 'pathGAN_deep':
+                self.netD = NLayerDiscriminator(input_channel_num + output_channel_num, n_layers=4)
             else:
                 raise NotImplementedError()
             self.optimizer_G = torch.optim.Adam(self.netG.parameters(), lr=args.lr, betas=(0.5, 0.999))

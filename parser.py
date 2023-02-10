@@ -91,14 +91,14 @@ def parse_arguments():
         "--D_net",
         type=str,
         default="none",
-        choices=["none", "patchGAN"],
+        choices=["none", "patchGAN", "patchGAN_deep"],
         help="D_net"
     )
     parser.add_argument(
         "--G_net",
         type=str,
         default="none",
-        choices=["none", "unet"],
+        choices=["none", "unet", "unet_deep"],
         help="G_net"
     )
     parser.add_argument(
