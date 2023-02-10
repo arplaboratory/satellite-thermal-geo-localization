@@ -43,14 +43,14 @@ def parse_arguments():
     parser.add_argument(
         "--GAN_mode",
         type=str,
-        default="vanilla",
+        default="lsgan",
         choices=["vanilla", "lsgan"],
         help="Choices of GAN loss"
     )
     parser.add_argument(
         "--GAN_upsample",
         type=str,
-        default="convtrans",
+        default="bilinear",
         choices=["convtrans", "bilinear"],
         help="Save freq for GAN"
     )
@@ -82,12 +82,6 @@ def parse_arguments():
         type=float,
         default=100.0,
         help="G_loss_lambda only for pix2pix"
-    )
-    parser.add_argument(
-        "--G_loss",
-        default="smoothL1",
-        choices=["L1", "MSSSIM"],
-        help="G_loss"
     )
     parser.add_argument(
         "--visual_all",

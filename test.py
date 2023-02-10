@@ -427,62 +427,6 @@ def test(args, eval_ds, model, model_db=None, test_method="hard_resize", pca=Non
             
     return recalls, recalls_str
 
-def test_translation(args, eval_ds, model):
-    """Compute PSNR of the given dataset and compute the recalls."""
-
-    model = model.eval()
-    psnr_sum = 0
-    psnr_count = 0
-    msssim_sum = 0
-    msssim_count = 0
-    if args.visual_all:
-        if os.path.isdir("visual_all"):
-            shutil.rmtree("visual_all")
-        os.mkdir("visual_all")
-    with torch.no_grad():
-        # For database use "hard_resize", although it usually has no effect because database images have same resolution
-        eval_ds.test_method = "hard_resize"
-
-        eval_ds.is_inference = True
-        eval_ds.compute_pairs(args)
-        eval_ds.is_inference = False
-
-        eval_dataloader = DataLoader(
-            dataset=eval_ds,
-            num_workers=args.num_workers,
-            batch_size=1,
-            pin_memory=(args.device == "cuda"),
-        )
-
-        logging.debug("Calculating PSNR and MSSSIM")
-
-        for query, database in tqdm(eval_dataloader, ncols=100):
-            # Compute features of all images (images contains queries, positives and negatives)
-            query_images = query.to(args.device) * 0.5 + 0.5
-            output = model(database.to(args.device))
-            output_images = output * 0.5 + 0.5
-            database_images = database.to(args.device) * 0.5 + 0.5
-            if args.visual_all:
-                vis_image_1 = transforms.ToPILImage()(output_images[0].cpu())
-                vis_image_2 = transforms.ToPILImage()(query_images[0].cpu())
-                vis_image_3 = transforms.ToPILImage()(database_images[0].cpu())
-                dst = Image.new('RGB', (vis_image_1.width, vis_image_1.height + vis_image_2.height + vis_image_3.height))
-                dst.paste(vis_image_1, (0, 0))
-                dst.paste(vis_image_2, (0, vis_image_1.height))
-                dst.paste(vis_image_3, (0, vis_image_1.height + vis_image_2.height))
-                dst.save(f"visual_all/{psnr_count}.jpg")
-            psnr_sum += calculate_psnr(query_images, output_images)
-            msssim_sum += ssim.ms_ssim(query_images, output_images, data_range=1)
-            psnr_count += 1
-            msssim_count += 1
-
-    psnr_sum /= psnr_count
-    msssim_sum /= msssim_count
-
-    psnr_str = f"PSNR: {psnr_sum:.1f}, MS-SSIM: {msssim_sum:.1f}"
-            
-    return [psnr_sum, msssim_sum], psnr_str
-
 def test_translation_pix2pix(args, eval_ds, model, visual_current=False, notable_image=list(), epoch_num=None, generate_h5_files=False):
     """Compute PSNR of the given dataset and compute the recalls."""
     

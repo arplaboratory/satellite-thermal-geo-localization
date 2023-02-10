@@ -17,7 +17,6 @@ from datetime import datetime
 import torchvision.transforms as transforms
 from torch.utils.data.dataloader import DataLoader
 import copy
-from model.msssim import ssim
 import wandb
 torch.backends.cudnn.benchmark = True  # Provides a speedup
 

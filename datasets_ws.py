@@ -1044,7 +1044,7 @@ class TranslationDataset(BaseDataset):
         positive = self.resized_transform(
             self._find_img_in_h5(best_positive_index, "database")
         )
-        return query, positive
+        return query, positive, query_index, best_positive_index
 
     def __len__(self):
         if self.is_inference:

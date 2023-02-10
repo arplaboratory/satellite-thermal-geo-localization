@@ -16,7 +16,6 @@ import model.aggregation as aggregation
 from model.non_local import NonLocalBlock
 from model.functional import ReverseLayerF
 from model.pix2pix_networks.networks import UnetGenerator, GANLoss, NLayerDiscriminator, get_scheduler
-from model.msssim.ssim import MS_SSIM
 from model.sync_batchnorm import convert_model
 
 # Pretrained models on Google Landmarks v2 and Places 365
@@ -326,9 +325,9 @@ class pix2pix():
     def __init__(self, args, input_channel_num, output_channel_num, for_training=False):
         super().__init__()
         if args.G_net == 'unet':
-            self.netG = UnetGenerator(input_channel_num, output_channel_num, 8, norm=args.GAN_norm, upsample=args.GAN_upsample)
+            self.netG = UnetGenerator(input_channel_num, output_channel_num, 8, norm=args.GAN_norm, upsample=args.GAN_upsample, use_tanh=args.G_tanh)
         elif args.G_net == 'unet_deep':
-            self.netG = UnetGenerator(input_channel_num, output_channel_num, 9, norm=args.GAN_norm, upsample=args.GAN_upsample)
+            self.netG = UnetGenerator(input_channel_num, output_channel_num, 9, norm=args.GAN_norm, upsample=args.GAN_upsample, use_tanh=args.G_tanh)
         else:
             raise NotImplementedError()
         self.device = args.device
@@ -346,10 +345,7 @@ class pix2pix():
             self.G_loss_lambda = args.G_loss_lambda
             self.G_loss = args.G_loss
             self.criterionGAN = GANLoss(args.GAN_mode).to(args.device)
-            if args.G_loss == 'L1':
-                self.criterionAUX = torch.nn.L1Loss()
-            elif args.G_loss == 'MSSSIM':
-                self.criterionAUX = MS_SSIM(data_range=1, channel=1 if args.G_gray else 3)
+            self.criterionAUX = torch.nn.L1Loss()
 
     def setup(self):
         if hasattr(self, 'netD'):
@@ -393,13 +389,7 @@ class pix2pix():
         pred_fake = self.netD(fake_AB)
         self.loss_G_GAN = self.criterionGAN(pred_fake, True)
         # Second, G(A) = B
-        if self.G_loss == 'MSSSIM':
-            # Denormalization
-            self.real_B = torch.clamp(self.real_B, min=-1, max=1) * 0.5 + 0.5
-            self.fake_B = torch.clamp(self.fake_B, min=-1, max=1) * 0.5 + 0.5
-            self.loss_G_L1 = (1 - self.criterionAUX(self.fake_B, self.real_B)) * self.G_loss_lambda
-        else:
-            self.loss_G_L1 = self.criterionAUX(self.fake_B, self.real_B) * self.G_loss_lambda
+        self.loss_G_L1 = self.criterionAUX(self.fake_B, self.real_B) * self.G_loss_lambda
         # combine loss and calculate gradients
         self.loss_G = self.loss_G_GAN + self.loss_G_L1
         self.loss_G.backward()

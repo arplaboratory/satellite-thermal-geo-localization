@@ -90,7 +90,7 @@ class GANLoss(nn.Module):
 class UnetGenerator(nn.Module):
     """Create a Unet-based generator"""
 
-    def __init__(self, input_nc, output_nc, num_downs, ngf=64, norm="batch", upsample="convtrans"):
+    def __init__(self, input_nc, output_nc, num_downs, ngf=64, norm="batch", upsample="convtrans", use_tanh=True):
         """Construct a Unet generator
         Parameters:
             input_nc (int)  -- the number of channels in input images
@@ -111,7 +111,7 @@ class UnetGenerator(nn.Module):
         unet_block = UnetSkipConnectionBlock(ngf * 4, ngf * 8, input_nc=None, submodule=unet_block, norm=norm, upsample=upsample)
         unet_block = UnetSkipConnectionBlock(ngf * 2, ngf * 4, input_nc=None, submodule=unet_block, norm=norm, upsample=upsample)
         unet_block = UnetSkipConnectionBlock(ngf, ngf * 2, input_nc=None, submodule=unet_block, norm=norm, upsample=upsample)
-        self.model = UnetSkipConnectionBlock(output_nc, ngf, input_nc=input_nc, submodule=unet_block, outermost=True, norm=norm, upsample=upsample)  # add the outermost layer
+        self.model = UnetSkipConnectionBlock(output_nc, ngf, input_nc=input_nc, submodule=unet_block, outermost=True, norm=norm, upsample=upsample, use_tanh=use_tanh)  # add the outermost layer
 
     def forward(self, input):
         """Standard forward"""
@@ -125,7 +125,7 @@ class UnetSkipConnectionBlock(nn.Module):
     """
 
     def __init__(self, outer_nc, inner_nc, input_nc=None,
-                 submodule=None, outermost=False, innermost=False, norm="batch", upsample="convtrans"):
+                 submodule=None, outermost=False, innermost=False, norm="batch", upsample="convtrans", use_tanh=True):
         """Construct a Unet submodule with skip connections.
         Parameters:
             outer_nc (int) -- the number of filters in the outer conv layer
@@ -166,7 +166,7 @@ class UnetSkipConnectionBlock(nn.Module):
                                        nn.Conv2d(inner_nc * 2, outer_nc,
                                        kernel_size=5, padding=2))
             down = [downconv]
-            if args.G_tanh:
+            if use_tanh:
                 up = [uprelu, upconv, nn.Tanh()]
             else:
                 up = [uprelu, upconv]
