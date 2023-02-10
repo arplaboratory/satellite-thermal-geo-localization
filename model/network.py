@@ -334,7 +334,7 @@ class pix2pix():
         if for_training:
             if args.D_net == 'patchGAN':
                 self.netD = NLayerDiscriminator(input_channel_num + output_channel_num)
-            elif args.D_net == 'pathGAN_deep':
+            elif args.D_net == 'patchGAN_deep':
                 self.netD = NLayerDiscriminator(input_channel_num + output_channel_num, n_layers=4)
             else:
                 raise NotImplementedError()
