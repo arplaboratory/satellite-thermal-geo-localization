@@ -506,16 +506,16 @@ def test_translation_pix2pix_generate_h5(args, eval_ds, model, visual_current=Fa
         model.netG = model.netG.eval()
     elif args.G_test_norm == "instance":
         model.netG = model.netG.train()
-    if os.path.isdir("generated_queries"):
-        shutil.rmtree("generated_queries")
-    os.mkdir("generated_queries")
-    save_path = os.path.join("generated_queries", "traing_queries.h5")
+    
+    save_path = os.path.join(args.save_dir, "traing_queries.h5")
+
     with torch.no_grad():
         # For database use "hard_resize", although it usually has no effect because database images have same resolution
         eval_ds.test_method = "hard_resize"
 
         eval_ds.is_inference = True
         eval_ds.compute_pairs(args)
+        eval_ds.is_inference = False
         
         eval_dataloader = DataLoader(
             dataset=eval_ds,
