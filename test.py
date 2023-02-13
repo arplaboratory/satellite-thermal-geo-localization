@@ -520,7 +520,7 @@ def test_translation_pix2pix_generate_h5(args, eval_ds, model, visual_current=Fa
         eval_dataloader = DataLoader(
             dataset=eval_ds,
             num_workers=args.num_workers,
-            batch_size=1,
+            batch_size=16 if args.G_test_norm == "batch" else 1,
             pin_memory=(args.device == "cuda"),
             shuffle=False
         )
@@ -534,40 +534,41 @@ def test_translation_pix2pix_generate_h5(args, eval_ds, model, visual_current=Fa
                 output = model.fake_B
                 output = torch.clamp(output, min=-1, max=1)
                 output_images = output * 0.5 + 0.5
-                generated_query = transforms.Grayscale(num_output_channels=3)(transforms.Resize(args.resize)(transforms.ToPILImage()(output_images[0].cpu())))
-                cood_y = database_path[0].split("@")[1]
-                cood_x = database_path[0].split("@")[2]
-                name = f"@{cood_y}@{cood_x}"
-                img_names.append(name)
-                img_np = np.array(generated_query)
-                img_np = np.expand_dims(img_np, axis=0)
-                size_np = np.expand_dims(
-                    np.array([img_np.shape[1], img_np.shape[2]]), axis=0)
-                if not start:
-                    hf.create_dataset(
-                        "image_data",
-                        data=img_np,
-                        chunks=(1, 512, 512, 3),
-                        maxshape=(None, 512, 512, 3),
-                        compression="lzf",
-                    )  # write the data to hdf5 file
-                    hf.create_dataset(
-                        "image_size",
-                        data=size_np,
-                        chunks=True,
-                        maxshape=(None, 2),
-                        compression="lzf",
-                    )
-                    start = True
-                else:
-                    hf["image_data"].resize(
-                        hf["image_data"].shape[0] + img_np.shape[0], axis=0
-                    )
-                    hf["image_data"][-img_np.shape[0]:] = img_np
-                    hf["image_size"].resize(
-                        hf["image_size"].shape[0] + size_np.shape[0], axis=0
-                    )
-                    hf["image_size"][-size_np.shape[0]:] = size_np
+                for i in range(len(database_path)):
+                    generated_query = transforms.Grayscale(num_output_channels=3)(transforms.Resize(args.resize)(transforms.ToPILImage()(output_images[i].cpu())))
+                    cood_y = database_path[i].split("@")[1]
+                    cood_x = database_path[i].split("@")[2]
+                    name = f"@{cood_y}@{cood_x}"
+                    img_names.append(name)
+                    img_np = np.array(generated_query)
+                    img_np = np.expand_dims(img_np, axis=0)
+                    size_np = np.expand_dims(
+                        np.array([img_np.shape[1], img_np.shape[2]]), axis=0)
+                    if not start:
+                        hf.create_dataset(
+                            "image_data",
+                            data=img_np,
+                            chunks=(1, 512, 512, 3),
+                            maxshape=(None, 512, 512, 3),
+                            compression="lzf",
+                        )  # write the data to hdf5 file
+                        hf.create_dataset(
+                            "image_size",
+                            data=size_np,
+                            chunks=True,
+                            maxshape=(None, 2),
+                            compression="lzf",
+                        )
+                        start = True
+                    else:
+                        hf["image_data"].resize(
+                            hf["image_data"].shape[0] + img_np.shape[0], axis=0
+                        )
+                        hf["image_data"][-img_np.shape[0]:] = img_np
+                        hf["image_size"].resize(
+                            hf["image_size"].shape[0] + size_np.shape[0], axis=0
+                        )
+                        hf["image_size"][-size_np.shape[0]:] = size_np
             t = h5py.string_dtype(encoding="utf-8")
             hf.create_dataset("image_name", data=img_names,
                             dtype=t, compression="lzf")
