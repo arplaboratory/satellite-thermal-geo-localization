@@ -959,6 +959,7 @@ class TranslationDataset(BaseDataset):
     ):
         super().__init__(args, datasets_folder, dataset_name, split, loading_queries)
         self.is_inference = False
+        self.loading_queries = loading_queries
 
         identity_transform = transforms.Lambda(lambda x: x)
         self.resize = args.GAN_resize
@@ -1054,11 +1055,7 @@ class TranslationDataset(BaseDataset):
         return query, positive, self.queries_paths[query_index], self.database_paths[best_positive_index]
 
     def __len__(self):
-        if self.is_inference:
-            # At inference time return the number of images. This is used for caching or computing NetVLAD's clusters
-            return self.database_num
-        else:
-            return len(self.pairs_global_indexes)
+        return len(self.pairs_global_indexes)
     
     def compute_pairs(self, args):
         self.is_inference = True
@@ -1071,9 +1068,13 @@ class TranslationDataset(BaseDataset):
     def compute_pairs_random(self, args):
         self.pairs_global_indexes = []
         # Take 1000 random queries
-        sampled_queries_indexes = np.random.choice(
-            self.queries_num, args.cache_refresh_rate, replace=False
-        )
+        if self.loading_queries:
+            sampled_queries_indexes = np.random.choice(
+                self.queries_num, args.cache_refresh_rate, replace=False
+            )
+        else:
+            sampled_queries_indexes = np.arange(self.queries_num)
+
         # This loop's iterations could be done individually in the __getitem__(). This way is slower but clearer (and yields same results)
         for query_index in sampled_queries_indexes:
             best_positive_index = self.get_best_positive_index(query_index)
