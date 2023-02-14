@@ -18,6 +18,8 @@ from datetime import datetime
 import torchvision.transforms as transforms
 from torch.utils.data.dataloader import DataLoader
 import copy
+import wandb
+from uuid import uuid4
 
 torch.backends.cudnn.benchmark = True  # Provides a speedup
 
@@ -28,11 +30,12 @@ start_time = datetime.now()
 args.save_dir = join(
     "logs",
     args.save_dir,
-    f"{args.dataset_name}-{start_time.strftime('%Y-%m-%d_%H-%M-%S')}",
+    f"{args.dataset_name}-{start_time.strftime('%Y-%m-%d_%H-%M-%S')}-{uuid4()}",
 )
 commons.setup_logging(args.save_dir)
 commons.make_deterministic(args.seed)
 logging.info(f"Arguments: {args}")
+wandb.init(project="VTL", entity="xjh19971", config=vars(args))
 logging.info(f"The outputs are being saved in {args.save_dir}")
 logging.info(
     f"Using {torch.cuda.device_count()} GPUs and {multiprocessing.cpu_count()} CPUs"
@@ -278,9 +281,6 @@ for epoch_num in range(start_epoch_num, args.epochs_num):
             train_ds.compute_triplets(args, model)
         train_ds.is_inference = False
 
-        if args.use_faiss_gpu:
-            torch.cuda.empty_cache()
-
         triplets_dl = DataLoader(
             dataset=train_ds,
             num_workers=args.num_workers,
@@ -464,6 +464,27 @@ for epoch_num in range(start_epoch_num, args.epochs_num):
         is_best,
         filename="last_model.pth",
     )
+
+    if args.DA != 'none':
+        wandb.log({
+                "epoch_num": epoch_num,
+                "recall1": recalls[0],
+                "recall5": recalls[1],
+                "best_r5": recalls[1] if is_best else best_r5,
+                "sum_loss": epoch_losses.mean(),
+                "triplet loss": epoch_triplet_losses.mean(),
+                "DA loss": epoch_DA_losses.mean()
+            },)
+    else:
+        wandb.log({
+                "epoch_num": epoch_num,
+                "recall1": recalls[0],
+                "recall5": recalls[1],
+                "best_r5": recalls[1] if is_best else best_r5,
+                "sum_loss": epoch_losses.mean(),
+                "triplet loss": epoch_triplet_losses.mean(),
+                "DA loss": 0
+            },)
 
     # If recall@5 did not improve for "many" epochs, stop training
     if is_best:
