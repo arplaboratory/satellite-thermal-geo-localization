@@ -499,7 +499,7 @@ def test_translation_pix2pix(args, eval_ds, model, visual_current=False, notable
             
     return [psnr_sum, msssim_sum], psnr_str
 
-def test_translation_pix2pix_generate_h5(args, eval_ds, model, visual_current=False, notable_image=list(), epoch_num=None):
+def test_translation_pix2pix_generate_h5(args, eval_ds, model):
     """Compute PSNR of the given dataset and compute the recalls."""
     
     if args.G_test_norm == "batch":
