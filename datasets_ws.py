@@ -667,7 +667,6 @@ class TripletsDataset(BaseDataset):
         
         if args.use_faiss_gpu:
             # Tmp memory for faiss
-            torch.cuda.empty_cache()
             self.gpu_resources = []
             for i in range(2):
                 # 2 gpu resource for positive
@@ -710,7 +709,6 @@ class TripletsDataset(BaseDataset):
         # Remove Tmp memory for faiss
         if args.use_faiss_gpu:
             del self.gpu_resources
-            torch.cuda.empty_cache()
 
         # self.triplets_global_indexes is a tensor of shape [1000, 12]
         self.triplets_global_indexes = torch.tensor(
@@ -746,7 +744,6 @@ class TripletsDataset(BaseDataset):
 
         if args.use_faiss_gpu:
             # Tmp memory for faiss
-            torch.cuda.empty_cache()
             self.gpu_resources = []
             for i in range(2):
                 # 2 gpu resource for positive and negative
@@ -790,7 +787,6 @@ class TripletsDataset(BaseDataset):
         del cache
         if args.use_faiss_gpu:
             del self.gpu_resources
-            torch.cuda.empty_cache()
 
         # self.triplets_global_indexes is a tensor of shape [1000, 12]
         self.triplets_global_indexes = torch.tensor(
@@ -844,7 +840,6 @@ class TripletsDataset(BaseDataset):
 
         if args.use_faiss_gpu:
             # Tmp memory for faiss
-            torch.cuda.empty_cache()
             self.gpu_resources = []
             for i in range(2):
                 # 2 gpu resource for positive and negative
@@ -882,7 +877,6 @@ class TripletsDataset(BaseDataset):
         del cache
         if args.use_faiss_gpu:
             del self.gpu_resources
-            torch.cuda.empty_cache()
 
         # self.triplets_global_indexes is a tensor of shape [1000, 12]
         self.triplets_global_indexes = torch.tensor(

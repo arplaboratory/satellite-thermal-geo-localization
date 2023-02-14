@@ -281,7 +281,6 @@ def test(args, eval_ds, model, model_db=None, test_method="hard_resize", pca=Non
     logging.debug("Calculating recalls")
     if args.prior_location_threshold == -1:
         if args.use_faiss_gpu:
-            torch.cuda.empty_cache()
             res = faiss.StandardGpuResources()
             faiss_index = faiss.GpuIndexFlatL2(res, args.features_dim)
         else:
