@@ -9,6 +9,11 @@ def parse_arguments():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument(
+        "--use_extended_data",
+        action="store_true",
+        help="Use extended data from pix2pix",
+    )
+    parser.add_argument(
         "--G_test_norm",
         type=str,
         default="batch",
