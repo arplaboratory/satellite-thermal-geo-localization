@@ -140,7 +140,7 @@ def create_h5_file(args, name, split, sample_num):
                            2, cood_x[i]-args.crop_width//2: cood_x[i]+args.crop_width//2, :]
             img_np = np.expand_dims(img_np, axis=0)
             size_np = np.expand_dims(
-                np.array([img_np.shape[0], img_np.shape[1]]), axis=0)
+                np.array([img_np.shape[1], img_np.shape[2]]), axis=0)
             if not start:
                 if args.compress:
                     hf.create_dataset(

@@ -67,7 +67,7 @@ class BaseDataset(data.Dataset):
     """Dataset with images from database and queries, used for inference (testing and building cache)."""
 
     def __init__(
-        self, args, datasets_folder="datasets", dataset_name="pitts30k", split="train"
+        self, args, datasets_folder="datasets", dataset_name="pitts30k", split="train", loading_queries=True
     ):
         super().__init__()
         self.args = args
@@ -82,9 +82,15 @@ class BaseDataset(data.Dataset):
         self.database_folder_h5_path = join(
             datasets_folder, dataset_name, split + "_database.h5"
         )
-        self.queries_folder_h5_path = join(
-            datasets_folder, dataset_name, split + "_queries.h5"
-        )
+        if loading_queries:
+            self.queries_folder_h5_path = join(
+                datasets_folder, dataset_name, split + "_queries.h5"
+            )
+        else:
+            # Do not load queries when generating thermal with pix2pix
+            self.queries_folder_h5_path = join(
+                datasets_folder, dataset_name, split + "_database.h5"
+            ) 
         database_folder_h5_df = h5py.File(self.database_folder_h5_path, "r")
         queries_folder_h5_df = h5py.File(self.queries_folder_h5_path, "r")
 
@@ -942,10 +948,12 @@ class TranslationDataset(BaseDataset):
         datasets_folder="datasets",
         dataset_name="pitts30k",
         split="train",
-        clean_black_region=False
+        clean_black_region=False,
+        loading_queries=True
     ):
-        super().__init__(args, datasets_folder, dataset_name, split)
+        super().__init__(args, datasets_folder, dataset_name, split, loading_queries)
         self.is_inference = False
+        self.loading_queries = loading_queries
 
         identity_transform = transforms.Lambda(lambda x: x)
         self.resize = args.GAN_resize
@@ -1038,14 +1046,10 @@ class TranslationDataset(BaseDataset):
         positive = self.resized_transform(
             self._find_img_in_h5(best_positive_index, "database")
         )
-        return query, positive, query_index, best_positive_index
+        return query, positive, self.queries_paths[query_index], self.database_paths[best_positive_index]
 
     def __len__(self):
-        if self.is_inference:
-            # At inference time return the number of images. This is used for caching or computing NetVLAD's clusters
-            return super().__len__()
-        else:
-            return len(self.pairs_global_indexes)
+        return len(self.pairs_global_indexes)
     
     def compute_pairs(self, args):
         self.is_inference = True
@@ -1058,9 +1062,13 @@ class TranslationDataset(BaseDataset):
     def compute_pairs_random(self, args):
         self.pairs_global_indexes = []
         # Take 1000 random queries
-        sampled_queries_indexes = np.random.choice(
-            self.queries_num, args.cache_refresh_rate, replace=False
-        )
+        if self.loading_queries:
+            sampled_queries_indexes = np.random.choice(
+                self.queries_num, args.cache_refresh_rate, replace=False
+            )
+        else:
+            sampled_queries_indexes = np.arange(self.queries_num)
+
         # This loop's iterations could be done individually in the __getitem__(). This way is slower but clearer (and yields same results)
         for query_index in sampled_queries_indexes:
             best_positive_index = self.get_best_positive_index(query_index)

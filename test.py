@@ -15,6 +15,7 @@ import os
 from PIL import Image
 import shutil
 import datasets_ws
+import h5py
 
 def test_efficient_ram_usage(args, eval_ds, model, test_method="hard_resize"):
     """This function gives the same output as test(), but uses much less RAM.
@@ -426,7 +427,7 @@ def test(args, eval_ds, model, model_db=None, test_method="hard_resize", pca=Non
             
     return recalls, recalls_str
 
-def test_translation_pix2pix(args, eval_ds, model, visual_current=False, notable_image=list(), epoch_num=None, generate_h5_files=False):
+def test_translation_pix2pix(args, eval_ds, model, visual_current=False, notable_image=list(), epoch_num=None):
     """Compute PSNR of the given dataset and compute the recalls."""
     
     if args.G_test_norm == "batch":
@@ -464,7 +465,7 @@ def test_translation_pix2pix(args, eval_ds, model, visual_current=False, notable
         )
 
         logging.debug("Calculating PSNR and MSSSIM")
-        for query, database, query_index, database_index in tqdm(eval_dataloader, ncols=100):
+        for query, database, _, _ in tqdm(eval_dataloader, ncols=100):
             # Compute features of all images (images contains queries, positives and negatives)
             model.set_input(database, query)
             model.forward()
@@ -496,6 +497,82 @@ def test_translation_pix2pix(args, eval_ds, model, visual_current=False, notable
     psnr_str = f"PSNR: {psnr_sum:.1f}, MS-SSIM: {msssim_sum:.1f}"
             
     return [psnr_sum, msssim_sum], psnr_str
+
+def test_translation_pix2pix_generate_h5(args, eval_ds, model, visual_current=False, notable_image=list(), epoch_num=None):
+    """Compute PSNR of the given dataset and compute the recalls."""
+    
+    if args.G_test_norm == "batch":
+        model.netG = model.netG.eval()
+    elif args.G_test_norm == "instance":
+        model.netG = model.netG.train()
+    
+    save_path = os.path.join(args.save_dir, "train_queries.h5")
+
+    with torch.no_grad():
+        # For database use "hard_resize", although it usually has no effect because database images have same resolution
+        eval_ds.test_method = "hard_resize"
+
+        eval_ds.is_inference = True
+        eval_ds.compute_pairs(args)
+        eval_ds.is_inference = False
+        
+        eval_dataloader = DataLoader(
+            dataset=eval_ds,
+            num_workers=args.num_workers,
+            batch_size=16 if args.G_test_norm == "batch" else 1,
+            pin_memory=(args.device == "cuda"),
+            shuffle=False
+        )
+        with h5py.File(save_path, "a") as hf:
+            start = False
+            img_names = []
+            for query, database, query_path, database_path in tqdm(eval_dataloader, ncols=100):
+                # Compute features of all images (images contains queries, positives and negatives)
+                model.set_input(database, query)
+                model.forward()
+                output = model.fake_B
+                output = torch.clamp(output, min=-1, max=1)
+                output_images = output * 0.5 + 0.5
+                for i in range(len(database_path)):
+                    generated_query = transforms.Grayscale(num_output_channels=3)(transforms.Resize(args.resize)(transforms.ToPILImage()(output_images[i].cpu())))
+                    cood_y = database_path[i].split("@")[1]
+                    cood_x = database_path[i].split("@")[2]
+                    name = f"@{cood_y}@{cood_x}"
+                    img_names.append(name)
+                    img_np = np.array(generated_query)
+                    img_np = np.expand_dims(img_np, axis=0)
+                    size_np = np.expand_dims(
+                        np.array([img_np.shape[1], img_np.shape[2]]), axis=0)
+                    if not start:
+                        hf.create_dataset(
+                            "image_data",
+                            data=img_np,
+                            chunks=(1, 512, 512, 3),
+                            maxshape=(None, 512, 512, 3),
+                            compression="lzf",
+                        )  # write the data to hdf5 file
+                        hf.create_dataset(
+                            "image_size",
+                            data=size_np,
+                            chunks=True,
+                            maxshape=(None, 2),
+                            compression="lzf",
+                        )
+                        start = True
+                    else:
+                        hf["image_data"].resize(
+                            hf["image_data"].shape[0] + img_np.shape[0], axis=0
+                        )
+                        hf["image_data"][-img_np.shape[0]:] = img_np
+                        hf["image_size"].resize(
+                            hf["image_size"].shape[0] + size_np.shape[0], axis=0
+                        )
+                        hf["image_size"][-size_np.shape[0]:] = size_np
+            t = h5py.string_dtype(encoding="utf-8")
+            hf.create_dataset("image_name", data=img_names,
+                            dtype=t, compression="lzf")
+            print("hdf5 file size: %d bytes" % os.path.getsize(save_path))
+
 
 def top_n_voting(topn, predictions, distances, maj_weight):
     if topn == "top1":
