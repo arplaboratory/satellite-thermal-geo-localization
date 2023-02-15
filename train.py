@@ -23,9 +23,11 @@ from uuid import uuid4
 
 torch.backends.cudnn.benchmark = True  # Provides a speedup
 
-
 # Initial setup: parser, logging...
 args = parser.parse_arguments()
+if args.use_extended_data:
+    raise NotImplementedError("Please use train_extended.py")
+    
 start_time = datetime.now()
 args.save_dir = join(
     "logs",
