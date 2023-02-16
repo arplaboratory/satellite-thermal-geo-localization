@@ -85,11 +85,11 @@ def create_h5_file(args, name, split, sample_num):
             database_queries_region = [valid_region[0] + args.crop_width//2,
                                     valid_region[1] + TRAIN_X_OFFSET + args.crop_width//2,
                                     valid_region[2] - args.crop_width//2,
-                                    valid_region[3] + VAL_X_OFFSET - args.crop_width//2]  # top, left, bottom, right
+                                    valid_region[1] + VAL_X_OFFSET - args.crop_width//2]  # top, left, bottom, right
             print(f'Val region: {database_queries_region}')
         else:
             database_queries_region = [valid_region[0] + args.crop_width//2,
-                                    valid_region[3] + VAL_X_OFFSET - args.crop_width//2,
+                                    valid_region[1] + VAL_X_OFFSET + args.crop_width//2,
                                     valid_region[2] - args.crop_width//2,
                                     valid_region[3] - args.crop_width//2]  # top, left, bottom, right
             print(f'Test region: {database_queries_region}')
