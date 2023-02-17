@@ -72,9 +72,10 @@ def create_h5_file(args, name, split, sample_num):
         else:
             raise ValueError('Generate test option is false. Please add --generate_test to generate test set.')
     elif args.region_num == 3:
-        # train at 0 - 4500, val at 4500 - 5500, test at 5500 - for thermal
-        TRAIN_X_OFFSET = 4500
-        VAL_X_OFFSET = 5500
+        # Easy: train at 0 - 4500, val at 4500 - 5500, test at 5500 - for thermal
+        # Hard: train at 0 - 3000, val at 3000 - 5000, test at 5000 - for thermal
+        TRAIN_X_OFFSET = 3000
+        VAL_X_OFFSET = 5000
         if split == 'train':
             database_queries_region = [valid_region[0] + args.crop_width//2,
                                     valid_region[1] + args.crop_width//2,
@@ -241,7 +242,7 @@ if __name__ == "__main__":
         create_h5_file(args, name='database', split='val', sample_num=args.val_sample_num)
         create_h5_file(args, name='queries', split='val', sample_num=args.val_sample_num)
 
-    if args.region_num <= 2:
+    if args.region_num == 2:
         # Not enough test data. Use val as test
         os.symlink(os.path.abspath(os.path.join(datasets_folder, args.database_name + '_' + str(args.database_index) + '_' + args.queries_name + '_' + str(args.queries_index), 'val_database.h5')),
                 os.path.join(datasets_folder, args.database_name + '_' + str(args.database_index) + '_' + args.queries_name + '_' + str(args.queries_index), 'test_database.h5'))
