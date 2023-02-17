@@ -248,6 +248,6 @@ if __name__ == "__main__":
                 os.path.join(datasets_folder, args.database_name + '_' + str(args.database_index) + '_' + args.queries_name + '_' + str(args.queries_index), 'test_database.h5'))
         os.symlink(os.path.abspath(os.path.join(datasets_folder, args.database_name + '_' + str(args.database_index) + '_' + args.queries_name + '_' + str(args.queries_index), 'val_queries.h5')),
                 os.path.join(datasets_folder, args.database_name + '_' + str(args.database_index) + '_' + args.queries_name + '_' + str(args.queries_index), 'test_queries.h5'))
-    else:
+    elif args.region_num == 3:
         create_h5_file(args, name='database', split='test', sample_num=args.val_sample_num)
         create_h5_file(args, name='queries', split='test', sample_num=args.val_sample_num)
