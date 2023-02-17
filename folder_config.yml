@@ -48,7 +48,7 @@ ADASI:
     - ADASI_weekday_notam_Bing Aerial_rotated.tif
   valid_regions:
     - [950, 7350, 10200, 9225]
-ADASI_thermal:
+ADASIthermal:
   name: 20221216_ADASI_weekday_notam_thermal_mapping
   maps:
     - ADASI_weekday_notam_DJIMapping_16-12-2022-14PM_north_part_rotated.tif
