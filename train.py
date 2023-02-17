@@ -529,5 +529,10 @@ if args.separate_branch:
 else:
     recalls, recalls_str = test.test(
         args, test_ds, model, model_db=model, test_method=args.test_method)
+
+wandb.log({
+        "final_recall1": recalls[0],
+        "final_recall5": recalls[1],
+    },)
         
 logging.info(f"Recalls on {test_ds}: {recalls_str}")
