@@ -24,6 +24,10 @@ from uuid import uuid4
 torch.backends.cudnn.benchmark = True  # Provides a speedup
 
 def train_loop(args, model, optimizer, train_ds, criterion_triplet, loop_num, model_db=None):
+    global epoch_losses, epoch_triplet_losses
+    if args.DA != 'none':
+        global epoch_DA_losses
+
     logging.debug(f"Cache: {loop_num} / {loops_num}")
 
     # Compute triplets to use in the triplet loss
@@ -440,18 +444,18 @@ for epoch_num in range(start_epoch_num, args.epochs_num):
 
     for loop_num in range(loops_num):
         if args.separate_branch:
-            batch_loss, triplet_loss, DA_loss = train_loop(args, model, optimizer, train_ds, criterion_triplet, loop_num, model_db=model_db)
+            train_loop(args, model, optimizer, train_ds, criterion_triplet, loop_num, model_db=model_db)
         else:
-            batch_loss, triplet_loss, DA_loss = train_loop(args, model, optimizer, train_ds, criterion_triplet, loop_num)
+            train_loop(args, model, optimizer, train_ds, criterion_triplet, loop_num)
     
     # Extended dataset training
     if args.use_extended_data:
         for loop_num in range(loops_num):
             if args.separate_branch:
-                batch_loss, triplet_loss, DA_loss = train_loop(args, model, optimizer, extended_ds, criterion_triplet, loop_num, model_db=model_db)
+                train_loop(args, model, optimizer, extended_ds, criterion_triplet, loop_num, model_db=model_db)
             else:
-                batch_loss, triplet_loss, DA_loss = train_loop(args, model, optimizer, extended_ds, criterion_triplet, loop_num)
-                
+                train_loop(args, model, optimizer, extended_ds, criterion_triplet, loop_num)
+
     info_str = f"Finished epoch {epoch_num:02d} in {str(datetime.now() - epoch_start_time)[:-7]}, "+ \
         f"average epoch sum loss = {epoch_losses.mean():.4f}, "+ \
         f"average epoch triplet loss = {epoch_triplet_losses.mean():.4f}, "
