@@ -165,9 +165,10 @@ def train_loop(args, model, optimizer, train_ds, criterion_triplet, loop_num, mo
         batch_loss = loss.item()
         if args.DA != 'none':
             DA_loss = loss_DA.item()
-            return_items = batch_loss, triplet_loss, DA_loss
-        else:
-            return_items = batch_loss, triplet_loss, None
+        epoch_triplet_losses = np.append(epoch_triplet_losses, triplet_loss)
+        epoch_losses = np.append(epoch_losses, batch_loss)
+        if args.DA != 'none':
+            epoch_DA_losses = np.append(epoch_DA_losses, DA_loss)
 
     debug_str = f"Epoch[{epoch_num:02d}]({loop_num}/{loops_num}): "+ \
         f"current batch sum loss = {batch_loss:.4f}, "+ \
@@ -180,8 +181,6 @@ def train_loop(args, model, optimizer, train_ds, criterion_triplet, loop_num, mo
         f"average epoch DA loss = {epoch_DA_losses.mean():.4f}, "
 
     logging.debug(debug_str)
-
-    return return_items
 
 
 # Initial setup: parser, logging...
@@ -444,10 +443,6 @@ for epoch_num in range(start_epoch_num, args.epochs_num):
             batch_loss, triplet_loss, DA_loss = train_loop(args, model, optimizer, train_ds, criterion_triplet, loop_num, model_db=model_db)
         else:
             batch_loss, triplet_loss, DA_loss = train_loop(args, model, optimizer, train_ds, criterion_triplet, loop_num)
-        epoch_triplet_losses = np.append(epoch_triplet_losses, triplet_loss)
-        epoch_losses = np.append(epoch_losses, batch_loss)
-        if args.DA != 'none':
-            epoch_DA_losses = np.append(epoch_DA_losses, DA_loss)
     
     # Extended dataset training
     if args.use_extended_data:
@@ -456,11 +451,7 @@ for epoch_num in range(start_epoch_num, args.epochs_num):
                 batch_loss, triplet_loss, DA_loss = train_loop(args, model, optimizer, extended_ds, criterion_triplet, loop_num, model_db=model_db)
             else:
                 batch_loss, triplet_loss, DA_loss = train_loop(args, model, optimizer, extended_ds, criterion_triplet, loop_num)
-            epoch_triplet_losses = np.append(epoch_triplet_losses, triplet_loss)
-            epoch_losses = np.append(epoch_losses, batch_loss)
-            if args.DA != 'none':
-                epoch_DA_losses = np.append(epoch_DA_losses, DA_loss)
-
+                
     info_str = f"Finished epoch {epoch_num:02d} in {str(datetime.now() - epoch_start_time)[:-7]}, "+ \
         f"average epoch sum loss = {epoch_losses.mean():.4f}, "+ \
         f"average epoch triplet loss = {epoch_triplet_losses.mean():.4f}, "
