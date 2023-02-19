@@ -16,10 +16,10 @@ from os.path import join
 from datetime import datetime
 import torchvision.transforms as transforms
 from torch.utils.data.dataloader import DataLoader
-import copy
 import wandb
-torch.backends.cudnn.benchmark = True  # Provides a speedup
+from uuid import uuid4
 
+torch.backends.cudnn.benchmark = True  # Provides a speedup
 VISUAL_IMAGE_NUM = 10
 
 def train_loop(args, model, train_ds, loop_num):
@@ -70,7 +70,7 @@ start_time = datetime.now()
 args.save_dir = join(
     "logs",
     args.save_dir,
-    f"{args.dataset_name}-{start_time.strftime('%Y-%m-%d_%H-%M-%S')}",
+    f"{args.dataset_name}-{start_time.strftime('%Y-%m-%d_%H-%M-%S')}-{uuid4()}",
 )
 commons.setup_logging(args.save_dir)
 commons.make_deterministic(args.seed)
