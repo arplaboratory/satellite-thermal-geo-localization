@@ -427,7 +427,7 @@ def test(args, eval_ds, model, model_db=None, test_method="hard_resize", pca=Non
             
     return recalls, recalls_str
 
-def test_translation_pix2pix(args, eval_ds, model, visual_current=False, notable_image=list(), epoch_num=None):
+def test_translation_pix2pix(args, eval_ds, model, visual_current=False, visual_image_num=10, epoch_num=None):
     """Compute PSNR of the given dataset and compute the recalls."""
     
     if args.G_test_norm == "batch":
@@ -474,7 +474,7 @@ def test_translation_pix2pix(args, eval_ds, model, visual_current=False, notable
             query_images = query.to(args.device) * 0.5 + 0.5
             output_images = output * 0.5 + 0.5
             database_images = database.to(args.device) * 0.5 + 0.5
-            if args.visual_all or (visual_current == True and psnr_count in notable_image):
+            if args.visual_all or (visual_current == True and psnr_count < visual_image_num):
                 vis_image_1 = transforms.ToPILImage()(output_images[0].cpu())
                 vis_image_2 = transforms.ToPILImage()(query_images[0].cpu())
                 vis_image_3 = transforms.ToPILImage()(database_images[0].cpu())
@@ -486,6 +486,9 @@ def test_translation_pix2pix(args, eval_ds, model, visual_current=False, notable
                     dst.save(f"{save_dir}/{psnr_count}.jpg")
                 elif visual_current:
                     dst.save(f"{save_dir}/{epoch_num}_{psnr_count}.jpg")
+            elif visual_current == True and psnr_count >= visual_image_num:
+                # early stop
+                break
             psnr_sum += calculate_psnr(query_images, output_images)
             msssim_sum += ssim.ms_ssim(query_images, output_images, data_range=1)
             psnr_count += 1

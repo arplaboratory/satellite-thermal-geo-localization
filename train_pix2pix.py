@@ -20,7 +20,7 @@ import copy
 import wandb
 torch.backends.cudnn.benchmark = True  # Provides a speedup
 
-NOTABLE_IMAGES = [880, 881, 882, 883, 884, 885, 886, 887, 888, 889]
+VISUAL_IMAGE_NUM = 10
 
 def train_loop(args, model, train_ds, loop_num):
     global epoch_losses_GAN, epoch_losses_AUX
@@ -135,10 +135,10 @@ for epoch_num in range(start_epoch_num, args.epochs_num):
     model.update_learning_rate() # Update the learning rate at the beginning
 
     for loop_num in range(loops_num):
-        train_loop(args, model, train_ds)
+        train_loop(args, model, train_ds, loop_num)
 
     for loop_num in range(loops_num):
-        train_loop(args, model, val_ds)
+        train_loop(args, model, val_ds, loop_num)
     
     info_str = f"Finished epoch {epoch_num:02d} in {str(datetime.now() - epoch_start_time)[:-7]}, "+ \
         f"average epoch sum GAN loss = {epoch_losses_GAN.mean():.4f}, "+ \
@@ -150,6 +150,8 @@ for epoch_num in range(start_epoch_num, args.epochs_num):
         visual_current = True
     else:
         visual_current = False
+
+    _, _ = test.test_translation_pix2pix(args, val_ds, model, visual_current, visual_image_num=VISUAL_IMAGE_NUM, epoch_num=epoch_num)
 
     wandb.log({
             "epoch_num": epoch_num,
