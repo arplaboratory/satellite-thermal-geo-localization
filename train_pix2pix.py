@@ -151,7 +151,8 @@ for epoch_num in range(start_epoch_num, args.epochs_num):
     else:
         visual_current = False
 
-    _, _ = test.test_translation_pix2pix(args, val_ds, model, visual_current, visual_image_num=VISUAL_IMAGE_NUM, epoch_num=epoch_num)
+    if visual_current:
+        _, _ = test.test_translation_pix2pix(args, val_ds, model, visual_current, visual_image_num=VISUAL_IMAGE_NUM, epoch_num=epoch_num)
 
     wandb.log({
             "epoch_num": epoch_num,
