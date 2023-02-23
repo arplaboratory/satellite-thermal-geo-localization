@@ -1,4 +1,4 @@
-# visual-thermal-localization
+# satellite-thermal-localization
 
 This is the official repository for Long-range UAV Thermal Geo-localization with Satellite Imagery.
 
