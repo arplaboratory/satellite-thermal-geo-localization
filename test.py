@@ -175,7 +175,7 @@ def test_efficient_ram_usage(args, eval_ds, model, test_method="hard_resize"):
     return recalls, recalls_str
 
 
-def test(args, eval_ds, model, model_db=None, test_method="hard_resize", pca=None):
+def test(args, eval_ds, model, model_db=None, test_method="hard_resize", pca=None, visualize=False):
     """Compute features of the given dataset and compute the recalls."""
 
     assert test_method in [
@@ -369,6 +369,11 @@ def test(args, eval_ds, model, model_db=None, test_method="hard_resize", pca=Non
     )
 
     if args.use_best_n > 0:
+        if visualize:
+            if os.path.isdir("visual_loc"):
+                shutil.rmtree("visual_loc")
+            os.mkdir("visual_loc")
+            save_dir = "visual_loc"
         samples_to_be_used = args.use_best_n
         error_m = []
         position_m = []
@@ -381,6 +386,12 @@ def test(args, eval_ds, model, model_db=None, test_method="hard_resize", pca=Non
             else:
                 if distance[sort_idx[0]] == 0:
                     best_position = eval_ds.database_utms[prediction[sort_idx[0]]]
+                    if visualize: # Wrong results
+                        database_index = prediction
+                        database_img = eval_ds._find_img_in_h5(database_index)
+                        query_img = eval_ds._find_img_in_h5(query_index)
+                        database_img.save(f"{save_dir}/{query_index}_correct_d.png")
+                        query_img.save(f"{save_dir}/{query_index}_correct_q.png")
                 else:
                     mean = distance[sort_idx[0]]
                     sigma = distance[sort_idx[0]] / distance[sort_idx[-1]]
@@ -395,35 +406,41 @@ def test(args, eval_ds, model, model_db=None, test_method="hard_resize", pca=Non
                     best_position = (y, x)
             actual_position = eval_ds.queries_utms[query_index]
             error = np.linalg.norm((actual_position[0]-best_position[0], actual_position[1]-best_position[1]))
+            if error >= 50 and visualize: # Wrong results
+                database_index = prediction
+                database_img = eval_ds._find_img_in_h5(database_index)
+                query_img = eval_ds._find_img_in_h5(query_index)
+                database_img.save(f"{save_dir}/{query_index}_wrong_d.png")
+                query_img.save(f"{save_dir}/{query_index}_wrong_q.png")
             error_m.append(error)
             position_m.append(actual_position)
         process_results_simulation(error_m, args.save_dir)
-        dataset_name_list = args.dataset_name.split('_')
-        database_name = dataset_name_list[0]
-        database_index = int(dataset_name_list[1])
-        queries_name = dataset_name_list[2]
-        if len(dataset_name_list[3]) > 1:
-            queries_index = []
-            for i in range(len(dataset_name_list[3])):
-                queries_index.append(int(dataset_name_list[3][i]))
-        else:
-            queries_index = int(dataset_name_list[3])
-        folder_config_path = './folder_config.yml'
-        with open(folder_config_path, 'r') as f:
-            folder_config = yaml.safe_load(f)
-        database_image_path = os.path.join(args.datasets_folder, folder_config[database_name]['name'],
-                                            folder_config[database_name]['maps'][database_index])
-        database_region = folder_config[database_name]['valid_regions'][database_index]
-        if hasattr(queries_index, "__len__"):
-            for i in range(len(queries_index)):
-                queries_index_single = queries_index[i]
-                queries_region = folder_config[queries_name]['valid_regions'][queries_index_single]
-                valid_region = calc_overlap(database_region, queries_region)
-                # save_heatmap_simulation(position_m, error_m, database_image_path, valid_region, args.save_dir, i)
-        else:
-            queries_region = folder_config[queries_name]['valid_regions'][queries_index]
-            valid_region = calc_overlap(database_region, queries_region)
-            # save_heatmap_simulation(position_m, error_m, database_image_path, valid_region, args.save_dir)
+        # dataset_name_list = args.dataset_name.split('_')
+        # database_name = dataset_name_list[0]
+        # database_index = int(dataset_name_list[1])
+        # queries_name = dataset_name_list[2]
+        # if len(dataset_name_list[3]) > 1:
+        #     queries_index = []
+        #     for i in range(len(dataset_name_list[3])):
+        #         queries_index.append(int(dataset_name_list[3][i]))
+        # else:
+        #     queries_index = int(dataset_name_list[3])
+        # folder_config_path = './folder_config.yml'
+        # with open(folder_config_path, 'r') as f:
+        #     folder_config = yaml.safe_load(f)
+        # database_image_path = os.path.join(args.datasets_folder, folder_config[database_name]['name'],
+        #                                     folder_config[database_name]['maps'][database_index])
+        # database_region = folder_config[database_name]['valid_regions'][database_index]
+        # if hasattr(queries_index, "__len__"):
+        #     for i in range(len(queries_index)):
+        #         queries_index_single = queries_index[i]
+        #         queries_region = folder_config[queries_name]['valid_regions'][queries_index_single]
+        #         valid_region = calc_overlap(database_region, queries_region)
+        #         # save_heatmap_simulation(position_m, error_m, database_image_path, valid_region, args.save_dir, i)
+        # else:
+        #     queries_region = folder_config[queries_name]['valid_regions'][queries_index]
+        #     valid_region = calc_overlap(database_region, queries_region)
+        #     # save_heatmap_simulation(position_m, error_m, database_image_path, valid_region, args.save_dir)
             
     return recalls, recalls_str
 
@@ -465,7 +482,7 @@ def test_translation_pix2pix(args, eval_ds, model, visual_current=False, visual_
         )
 
         logging.debug("Calculating PSNR and MSSSIM")
-        for query, database, _, _ in tqdm(eval_dataloader, ncols=100):
+        for query, database, query_name, database_name in tqdm(eval_dataloader, ncols=100):
             # Compute features of all images (images contains queries, positives and negatives)
             model.set_input(database, query)
             model.forward()
@@ -483,9 +500,9 @@ def test_translation_pix2pix(args, eval_ds, model, visual_current=False, visual_
                 dst.paste(vis_image_2, (0, vis_image_1.height))
                 dst.paste(vis_image_3, (0, vis_image_1.height + vis_image_2.height))
                 if args.visual_all:
-                    dst.save(f"{save_dir}/{psnr_count}.jpg")
+                    dst.save(f"{save_dir}/{query_name}.jpg")
                 elif visual_current:
-                    dst.save(f"{save_dir}/{epoch_num}_{psnr_count}.jpg")
+                    dst.save(f"{save_dir}/{epoch_num}_{query_name}.jpg")
             elif visual_current == True and psnr_count >= visual_image_num:
                 # early stop
                 break

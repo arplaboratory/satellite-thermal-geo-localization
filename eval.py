@@ -128,9 +128,9 @@ logging.info(f"Test set: {test_ds}")
 
 ######################################### TEST on TEST SET #########################################
 if args.separate_branch:
-    recalls, recalls_str = test.test(args, test_ds, model, model_db = model_db, test_method = args.test_method, pca = pca)
+    recalls, recalls_str = test.test(args, test_ds, model, model_db = model_db, test_method = args.test_method, pca = pca, visualize=args.visual_all)
 else:
-    recalls, recalls_str = test.test(args, test_ds, model, test_method = args.test_method, pca = pca)
+    recalls, recalls_str = test.test(args, test_ds, model, test_method = args.test_method, pca = pca, visualize=args.visual_all)
 logging.info(f"Recalls on {test_ds}: {recalls_str}")
 
 logging.info(f"Finished in {str(datetime.now() - start_time)[:-7]}")
