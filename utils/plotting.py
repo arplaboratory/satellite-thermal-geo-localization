@@ -40,7 +40,7 @@ def process_results_simulation(error_m, save_folder):
     f.write("Mean error: %.2fm \n" % (np.mean(res_error_m)))
     print(f"Mean error: {np.mean(res_error_m)}")
 
-    text_result = np.hist(res_error_m, bins=130)
+    text_result = np.histogram(res_error_m, bins=130)
     f.write(f"Historgram: {text_result}")
 
     f.close()
