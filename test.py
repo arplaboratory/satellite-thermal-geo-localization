@@ -374,6 +374,8 @@ def test(args, eval_ds, model, model_db=None, test_method="hard_resize", pca=Non
                 shutil.rmtree("visual_loc")
             os.mkdir("visual_loc")
             save_dir = "visual_loc"
+            # init dataset
+            eval_ds.__getitem__(0)
         samples_to_be_used = args.use_best_n
         error_m = []
         position_m = []
@@ -386,12 +388,6 @@ def test(args, eval_ds, model, model_db=None, test_method="hard_resize", pca=Non
             else:
                 if distance[sort_idx[0]] == 0:
                     best_position = eval_ds.database_utms[prediction[sort_idx[0]]]
-                    if visualize: # Wrong results
-                        database_index = prediction
-                        database_img = eval_ds._find_img_in_h5(database_index)
-                        query_img = eval_ds._find_img_in_h5(query_index)
-                        database_img.save(f"{save_dir}/{query_index}_correct_d.png")
-                        query_img.save(f"{save_dir}/{query_index}_correct_q.png")
                 else:
                     mean = distance[sort_idx[0]]
                     sigma = distance[sort_idx[0]] / distance[sort_idx[-1]]
@@ -407,11 +403,24 @@ def test(args, eval_ds, model, model_db=None, test_method="hard_resize", pca=Non
             actual_position = eval_ds.queries_utms[query_index]
             error = np.linalg.norm((actual_position[0]-best_position[0], actual_position[1]-best_position[1]))
             if error >= 50 and visualize: # Wrong results
-                database_index = prediction
-                database_img = eval_ds._find_img_in_h5(database_index)
-                query_img = eval_ds._find_img_in_h5(query_index)
+                database_index = prediction[sort_idx[0]]
+                database_img = eval_ds._find_img_in_h5(database_index, "database")
+                if args.G_contrast:
+                    query_img = transforms.functional.adjust_contrast(eval_ds._find_img_in_h5(query_index, "queries"), contrast_factor=3)
+                else:
+                    query_img = eval_ds._find_img_in_h5(query_index, "queries")
                 database_img.save(f"{save_dir}/{query_index}_wrong_d.png")
                 query_img.save(f"{save_dir}/{query_index}_wrong_q.png")
+            elif error <= 35 and visualize: # Wrong results
+                database_index = prediction[sort_idx[0]]
+                database_img = eval_ds._find_img_in_h5(database_index, "database")
+                if args.G_contrast:
+                    query_img = transforms.functional.adjust_contrast(eval_ds._find_img_in_h5(query_index, "queries"), contrast_factor=3)
+                else:
+                    query_img = eval_ds._find_img_in_h5(query_index, "queries")
+                database_img.save(f"{save_dir}/{query_index}_correct_d.png")
+                query_img.save(f"{save_dir}/{query_index}_correct_q.png")
+            
             error_m.append(error)
             position_m.append(actual_position)
         process_results_simulation(error_m, args.save_dir)
