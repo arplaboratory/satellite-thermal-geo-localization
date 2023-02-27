@@ -7,7 +7,7 @@ Dataset link: [Google drive](https://drive.google.com/drive/folders/1sxkN1S3tvRm
 The ``dataset`` folder should be created in the root folder with the following structure
 
 ```
-datasets/satellite_0_thermalmapping_135/
+satellite-thermal-geo-localization/datasets/satellite_0_thermalmapping_135/
 ├── test_database.h5
 ├── test_queries.h5
 ├── train_database.h5
