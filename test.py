@@ -6,7 +6,7 @@ from tqdm import tqdm
 from torchvision import transforms
 from torch.utils.data import DataLoader
 from torch.utils.data.dataset import Subset
-from utils.plotting import save_heatmap_simulation, process_results_simulation
+from utils.plotting import process_results_simulation
 from h5_transformer import calc_overlap
 from model.functional import calculate_psnr
 from model.msssim import ssim
@@ -374,6 +374,8 @@ def test(args, eval_ds, model, model_db=None, test_method="hard_resize", pca=Non
                 shutil.rmtree("visual_loc")
             os.mkdir("visual_loc")
             save_dir = "visual_loc"
+            # init dataset
+            eval_ds.__getitem__(0)
         samples_to_be_used = args.use_best_n
         error_m = []
         position_m = []
@@ -386,12 +388,6 @@ def test(args, eval_ds, model, model_db=None, test_method="hard_resize", pca=Non
             else:
                 if distance[sort_idx[0]] == 0:
                     best_position = eval_ds.database_utms[prediction[sort_idx[0]]]
-                    if visualize: # Wrong results
-                        database_index = prediction
-                        database_img = eval_ds._find_img_in_h5(database_index)
-                        query_img = eval_ds._find_img_in_h5(query_index)
-                        database_img.save(f"{save_dir}/{query_index}_correct_d.png")
-                        query_img.save(f"{save_dir}/{query_index}_correct_q.png")
                 else:
                     mean = distance[sort_idx[0]]
                     sigma = distance[sort_idx[0]] / distance[sort_idx[-1]]
@@ -407,40 +403,27 @@ def test(args, eval_ds, model, model_db=None, test_method="hard_resize", pca=Non
             actual_position = eval_ds.queries_utms[query_index]
             error = np.linalg.norm((actual_position[0]-best_position[0], actual_position[1]-best_position[1]))
             if error >= 50 and visualize: # Wrong results
-                database_index = prediction
-                database_img = eval_ds._find_img_in_h5(database_index)
-                query_img = eval_ds._find_img_in_h5(query_index)
+                database_index = prediction[sort_idx[0]]
+                database_img = eval_ds._find_img_in_h5(database_index, "database")
+                if args.G_contrast:
+                    query_img = transforms.functional.adjust_contrast(eval_ds._find_img_in_h5(query_index, "queries"), contrast_factor=3)
+                else:
+                    query_img = eval_ds._find_img_in_h5(query_index, "queries")
                 database_img.save(f"{save_dir}/{query_index}_wrong_d.png")
                 query_img.save(f"{save_dir}/{query_index}_wrong_q.png")
+            elif error <= 35 and visualize: # Wrong results
+                database_index = prediction[sort_idx[0]]
+                database_img = eval_ds._find_img_in_h5(database_index, "database")
+                if args.G_contrast:
+                    query_img = transforms.functional.adjust_contrast(eval_ds._find_img_in_h5(query_index, "queries"), contrast_factor=3)
+                else:
+                    query_img = eval_ds._find_img_in_h5(query_index, "queries")
+                database_img.save(f"{save_dir}/{query_index}_correct_d.png")
+                query_img.save(f"{save_dir}/{query_index}_correct_q.png")
+            
             error_m.append(error)
             position_m.append(actual_position)
         process_results_simulation(error_m, args.save_dir)
-        # dataset_name_list = args.dataset_name.split('_')
-        # database_name = dataset_name_list[0]
-        # database_index = int(dataset_name_list[1])
-        # queries_name = dataset_name_list[2]
-        # if len(dataset_name_list[3]) > 1:
-        #     queries_index = []
-        #     for i in range(len(dataset_name_list[3])):
-        #         queries_index.append(int(dataset_name_list[3][i]))
-        # else:
-        #     queries_index = int(dataset_name_list[3])
-        # folder_config_path = './folder_config.yml'
-        # with open(folder_config_path, 'r') as f:
-        #     folder_config = yaml.safe_load(f)
-        # database_image_path = os.path.join(args.datasets_folder, folder_config[database_name]['name'],
-        #                                     folder_config[database_name]['maps'][database_index])
-        # database_region = folder_config[database_name]['valid_regions'][database_index]
-        # if hasattr(queries_index, "__len__"):
-        #     for i in range(len(queries_index)):
-        #         queries_index_single = queries_index[i]
-        #         queries_region = folder_config[queries_name]['valid_regions'][queries_index_single]
-        #         valid_region = calc_overlap(database_region, queries_region)
-        #         # save_heatmap_simulation(position_m, error_m, database_image_path, valid_region, args.save_dir, i)
-        # else:
-        #     queries_region = folder_config[queries_name]['valid_regions'][queries_index]
-        #     valid_region = calc_overlap(database_region, queries_region)
-        #     # save_heatmap_simulation(position_m, error_m, database_image_path, valid_region, args.save_dir)
             
     return recalls, recalls_str
 
