@@ -45,8 +45,8 @@ model.setup()
 
 ######################################### DATASETS #########################################
 train_ds = datasets_ws.TranslationDataset(
-    args, args.datasets_folder, args.dataset_name, "train", loading_queries=False)
-logging.info(f"Train set: {train_ds}")
+    args, args.datasets_folder, args.dataset_name, "extended", loading_queries=False)
+logging.info(f"Extended set: {train_ds}")
 
 ######################################### TEST on TEST SET #########################################
 test.test_translation_pix2pix_generate_h5(args, train_ds, model)
