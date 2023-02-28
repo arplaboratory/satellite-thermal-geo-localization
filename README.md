@@ -1,6 +1,11 @@
 # satellite-thermal-geo-localization
 
-This is the official repository for Long-range UAV Thermal Geo-localization with Satellite Imagery. The 
+This is the official repository for Long-range UAV Thermal Geo-localization with Satellite Imagery. We mainly refer to the following repositories and appreciate their open-source implementations.
+
+```
+https://github.com/gmberton/deep-visual-geo-localization-benchmark
+https://github.com/fungtion/DANN
+···
 
 ## Dataset
 Dataset link: [Google drive](https://drive.google.com/drive/folders/1sxkN1S3tvRmnP4C01Qqc2c8pWOsulPEG).
@@ -86,4 +91,4 @@ To evaluate SGM, use one of the following scripts:
 ```
 Note that running evaluation scripts requires two arguments: **SGM_model_folder_name** and **backbone_name**. The typical backbone we use is **resnet18conv4**.
 
-Find the test results in in ``./test/default/model_folder_name/satellite_0_thermalmapping135-datetime``.
+Find the test results in in ``./test/default/model_folder_name/satellite_0_thermalmapping135-datetime``. There will be two folders. This first reports **R@1** and **R@5**. The second reports **R_512@1**, **R_512@5** and **L^512_2**.
