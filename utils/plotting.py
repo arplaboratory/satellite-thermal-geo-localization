@@ -40,12 +40,12 @@ def process_results_simulation(error_m, save_folder):
     f.write("Mean error: %.2fm \n" % (np.mean(res_error_m)))
     print(f"Mean error: {np.mean(res_error_m)}")
 
-    text_result = np.histogram(res_error_m, bins=130)
+    text_result = np.histogram(res_error_m, bins=16, range=[0, 512])
     f.write(f"Historgram: {text_result}")
 
     f.close()
 
-    plt.hist(res_error_m, histtype='step', bins=130)
+    plt.hist(res_error_m, histtype='step', bins=16, range=[0, 512])
     plt.title('Histogram of L_2 Distance Error')
     plt.xlabel("Error")
     plt.ylabel("Frequency")
