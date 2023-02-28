@@ -127,3 +127,6 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Customed
+transform_dataset_step_1_stride.sh
