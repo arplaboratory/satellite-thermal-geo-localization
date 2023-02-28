@@ -2,6 +2,7 @@
 
 This is the official repository for Long-range UAV Thermal Geo-localization with Satellite Imagery.
 
+## Dataset
 Dataset link: [Google drive](https://drive.google.com/drive/folders/1sxkN1S3tvRmnP4C01Qqc2c8pWOsulPEG).
 
 The ``dataset`` folder should be created in the root folder with the following structure
@@ -29,8 +30,30 @@ b44ee39173bf356b24690ed6933a6792  train_queries.h5
 fdcb2e12d9a29b8d20a4cbd88bfe430c  val_queries.h5
 ```
 
+## Training
 You can find the training scripts and evaluation scripts in ``scripts`` folder. The scripts is for slurm system to submit sbatch job. If you want to run bash command, change the suffix from ``sbatch`` to ``sh`` and run with bash.
 
+### TGM training
+
+To train Thermal Generate Module, use one of the following scripts:
+```
+train_bing_thermal_translation_10.sbatch
+train_bing_thermal_translation_100.sbatch
+train_bing_thermal_translation_100_noncontrast.sbatch
+train_bing_thermal_translation_10_noncontrast.sbatch
+```
+
+After training TGM, find your model folder in ./logs/default/satellite_0_thermalmapping135...
+
+To generate thermal images from extended_database.h5, run one of the following scripts:
+
+```
+train_bing_thermal_translation_10.sbatch
+train_bing_thermal_translation_100.sbatch
+train_bing_thermal_translation_100_noncontrast.sbatch
+train_bing_thermal_translation_10_noncontrast.sbatch
+```
+## Evaluation
 Note that running evaluation scripts requires two arguments: ```model_folder_name``` and ```backbone_name```. An example command is:
 ```
 sbatch ./scripts/eval_contrast.sbatch  satellite_0_thermalmapping_135-2023-02-18_05-18-21-c0c572c4-a48a-4d5b-a152-bbc51b9161aa resnet18conv4
@@ -40,4 +63,3 @@ Or the bash command
 ./scripts/eval_contrast.sh  satellite_0_thermalmapping_135-2023-02-18_05-18-21-c0c572c4-a48a-4d5b-a152-bbc51b9161aa resnet18conv4
 ```
 
-Running training scripts does not require arguments.
