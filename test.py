@@ -9,7 +9,6 @@ from torch.utils.data.dataset import Subset
 from utils.plotting import process_results_simulation
 from h5_transformer import calc_overlap
 from model.functional import calculate_psnr
-from model.msssim import ssim
 import yaml
 import os
 from PIL import Image
@@ -436,8 +435,6 @@ def test_translation_pix2pix(args, eval_ds, model, visual_current=False, visual_
         model.netG = model.netG.train()
     psnr_sum = 0
     psnr_count = 0
-    msssim_sum = 0
-    msssim_count = 0
     save_dir = None
     if args.visual_all:
         if os.path.isdir("visual_all"):
@@ -464,7 +461,7 @@ def test_translation_pix2pix(args, eval_ds, model, visual_current=False, visual_
             shuffle=False
         )
 
-        logging.debug("Calculating PSNR and MSSSIM")
+        logging.debug("Calculating PSNR")
         for query, database, query_name, database_name in tqdm(eval_dataloader, ncols=100):
             # Compute features of all images (images contains queries, positives and negatives)
             model.set_input(database, query)
@@ -490,16 +487,13 @@ def test_translation_pix2pix(args, eval_ds, model, visual_current=False, visual_
                 # early stop
                 break
             psnr_sum += calculate_psnr(query_images, output_images)
-            msssim_sum += ssim.ms_ssim(query_images, output_images, data_range=1)
             psnr_count += 1
-            msssim_count += 1
 
     psnr_sum /= psnr_count
-    msssim_sum /= msssim_count
 
-    psnr_str = f"PSNR: {psnr_sum:.1f}, MS-SSIM: {msssim_sum:.1f}"
+    psnr_str = f"PSNR: {psnr_sum:.1f}"
             
-    return [psnr_sum, msssim_sum], psnr_str
+    return [psnr_sum], psnr_str
 
 def test_translation_pix2pix_generate_h5(args, eval_ds, model):
     """Compute PSNR of the given dataset and compute the recalls."""

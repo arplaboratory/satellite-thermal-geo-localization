@@ -121,7 +121,6 @@ if args.resume:
     )
 else:
     best_psnr = start_epoch_num = not_improved_num = 0
-best_msssim = 0
 
 # Training loop
 for epoch_num in range(start_epoch_num, args.epochs_num):
