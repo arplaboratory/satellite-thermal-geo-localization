@@ -378,7 +378,7 @@ def test(args, eval_ds, model, model_db=None, test_method="hard_resize", pca=Non
         samples_to_be_used = args.use_best_n
         error_m = []
         position_m = []
-        for query_index in range(len(predictions)):
+        for query_index in tqdm(range(len(predictions))):
             distance = distances[query_index]
             prediction = predictions[query_index]
             sort_idx = np.argsort(distance)
@@ -408,6 +408,9 @@ def test(args, eval_ds, model, model_db=None, test_method="hard_resize", pca=Non
                     query_img = transforms.functional.adjust_contrast(eval_ds._find_img_in_h5(query_index, "queries"), contrast_factor=3)
                 else:
                     query_img = eval_ds._find_img_in_h5(query_index, "queries")
+                result = Image.new(database_img.mode, (524, 524), (255, 0, 0))
+                result.paste(database_img, (6, 6))
+                database_img = result
                 database_img.save(f"{save_dir}/{query_index}_wrong_d.png")
                 query_img.save(f"{save_dir}/{query_index}_wrong_q.png")
             elif error <= 35 and visualize: # Wrong results
@@ -417,8 +420,23 @@ def test(args, eval_ds, model, model_db=None, test_method="hard_resize", pca=Non
                     query_img = transforms.functional.adjust_contrast(eval_ds._find_img_in_h5(query_index, "queries"), contrast_factor=3)
                 else:
                     query_img = eval_ds._find_img_in_h5(query_index, "queries")
+                result = Image.new(database_img.mode, (524, 524), (0, 255, 0))
+                result.paste(database_img, (6, 6))
+                database_img = result
                 database_img.save(f"{save_dir}/{query_index}_correct_d.png")
                 query_img.save(f"{save_dir}/{query_index}_correct_q.png")
+            elif visualize: # Ambiguous results
+                database_index = prediction[sort_idx[0]]
+                database_img = eval_ds._find_img_in_h5(database_index, "database")
+                if args.G_contrast:
+                    query_img = transforms.functional.adjust_contrast(eval_ds._find_img_in_h5(query_index, "queries"), contrast_factor=3)
+                else:
+                    query_img = eval_ds._find_img_in_h5(query_index, "queries")
+                result = Image.new(database_img.mode, (524, 524), (128, 128, 128))
+                result.paste(database_img, (6, 6))
+                database_img = result
+                database_img.save(f"{save_dir}/{query_index}_d.png")
+                query_img.save(f"{save_dir}/{query_index}_q.png")
             
             error_m.append(error)
             position_m.append(actual_position)
@@ -480,7 +498,9 @@ def test_translation_pix2pix(args, eval_ds, model, visual_current=False, visual_
                 dst.paste(vis_image_2, (0, vis_image_1.height))
                 dst.paste(vis_image_3, (0, vis_image_1.height + vis_image_2.height))
                 if args.visual_all:
-                    dst.save(f"{save_dir}/{query_name}.jpg")
+                    vis_image_1.save(f"{save_dir}/{psnr_count}_gen.jpg")
+                    vis_image_2.save(f"{save_dir}/{psnr_count}_gt.jpg")
+                    vis_image_3.save(f"{save_dir}/{psnr_count}_st.jpg")
                 elif visual_current:
                     dst.save(f"{save_dir}/{epoch_num}_{query_name}.jpg")
             elif visual_current == True and psnr_count >= visual_image_num:
