@@ -81,8 +81,8 @@ The ``satellite_0_thermalmapping135-datetime-uuid`` is your **SGM_model_folder_n
 ## Evaluation
 To evaluate SGM, use one of the following scripts:
 ```
-./scripts/eval_nocontrast.sbatch   SGM_model_folder_name   backbone_name
 ./scripts/eval.sbatch   SGM_model_folder_name   backbone_name
+./scripts/eval_nocontrast.sbatch   SGM_model_folder_name   backbone_name
 ```
 Note that running evaluation scripts requires two arguments: **SGM_model_folder_name** and **backbone_name**. The typical backbone we use is **resnet18conv4**.
 
