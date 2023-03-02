@@ -3,7 +3,7 @@
 This is the official repository for Long-range UAV Thermal Geo-localization with Satellite Imagery. [[Watch the video]](https://youtu.be/UhXMOUvMM2A)
 
 ## Dataset
-Dataset link: [Google drive](https://drive.google.com/drive/folders/1sxkN1S3tvRmnP4C01Qqc2c8pWOsulPEG).
+Dataset link: [Download](https://long-range-uav-thermal.s3.me-central-1.amazonaws.com/thermal_h5_datasets.zip)
 
 The ``dataset`` folder should be created in the root folder with the following structure
 
