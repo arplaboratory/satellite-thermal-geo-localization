@@ -1,6 +1,6 @@
 # satellite-thermal-geo-localization
 
-This is the official repository for Long-range UAV Thermal Geo-localization with Satellite Imagery. [[Watch the video]](https://youtu.be/UhXMOUvMM2A)
+This is the official repository for Long-range UAV Thermal Geo-localization with Satellite Imagery.
 
 ## Dataset
 Dataset link: [Download](https://long-range-uav-thermal.s3.me-central-1.amazonaws.com/thermal_h5_datasets.zip)
