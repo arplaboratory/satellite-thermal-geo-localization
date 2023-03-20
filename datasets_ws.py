@@ -386,7 +386,7 @@ class TripletsDataset(BaseDataset):
                 if args.rand_perspective != None
                 else identity_transform,
                 transforms.RandomResizedCrop(
-                    size=self.resize, scale=(1 - args.random_resized_crop, 1)
+                    size=self.resize, scale=(1 - args.random_resized_crop, 1 + args.random_resized_crop)
                 )
                 if args.random_resized_crop != None
                 else identity_transform,

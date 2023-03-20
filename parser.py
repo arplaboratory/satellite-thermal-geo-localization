@@ -9,6 +9,11 @@ def parse_arguments():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument(
+        "--use_test_augment",
+        action="store_true",
+        help="Use test augmentation",
+    )
+    parser.add_argument(
         "--use_extended_data",
         action="store_true",
         help="Use extended data from pix2pix",
@@ -402,6 +407,8 @@ def parse_arguments():
     parser.add_argument("--random_resized_crop",
                         type=float, default=None, help="_")
     parser.add_argument("--random_rotation", type=float,
+                        default=None, help="_")
+    parser.add_argument("--gaussian_noise", type=float,
                         default=None, help="_")
     # Paths parameters
     parser.add_argument(
