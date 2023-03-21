@@ -408,7 +408,7 @@ def parse_arguments():
                         type=float, default=None, help="_")
     parser.add_argument("--random_rotation", type=float,
                         default=None, help="_")
-    parser.add_argument("--gaussian_noise", type=float,
+    parser.add_argument("--random_blur", type=float,
                         default=None, help="_")
     # Paths parameters
     parser.add_argument(

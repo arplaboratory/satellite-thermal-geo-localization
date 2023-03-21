@@ -11,4 +11,4 @@
 eval "$(conda shell.bash hook)"
 conda activate VTL
 
-python3 train_extended.py --dataset_name=satellite_0_thermalmapping_135_100 --mining=partial --datasets_folder=datasets --infer_batch_size 16 --train_batch_size 4 --lr 0.0001 --patience 100 --epochs_num 100 --use_faiss_gpu --conv_output_dim 4096 --add_bn --DA DANN_after --lambda_DA 0.1 --G_contrast --use_extended_data --random_rotation $ROT --random_resized_crop $RES --rand_perspective $PER
+python3 train_extended.py --dataset_name=satellite_0_thermalmapping_135_100 --mining=partial --datasets_folder=datasets --infer_batch_size 16 --train_batch_size 4 --lr 0.0001 --patience 100 --epochs_num 100 --use_faiss_gpu --conv_output_dim 4096 --add_bn --DA DANN_after --lambda_DA 0.1 --G_contrast --use_extended_data --random_rotation $ROT --random_resized_crop $RES --rand_perspective $PER --random_blur $BLU

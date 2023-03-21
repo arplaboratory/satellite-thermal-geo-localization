@@ -189,6 +189,9 @@ class BaseDataset(data.Dataset):
                 transforms.RandomRotation(degrees=args.random_rotation)
                 if args.random_rotation != None
                 else identity_transform,
+                transforms.RandomApply([transforms.GaussianBlur(kernel_size=rargs.random_blur)], p=0.5)
+                if args.random_blur != None
+                else identity_transform,
                 base_transform
             ]
         )
