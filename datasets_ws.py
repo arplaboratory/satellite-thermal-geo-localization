@@ -160,14 +160,47 @@ class BaseDataset(data.Dataset):
         queries_folder_h5_df.close()
 
         identity_transform = transforms.Lambda(lambda x: x)
-        self.query_transform = transforms.Compose(
+        if args.use_test_augment:
+            self.query_transform = transforms.Compose(
             [
                 transforms.Grayscale(num_output_channels=3)
                 if self.args.G_gray
                 else identity_transform,
+                transforms.ColorJitter(brightness=args.brightness)
+                if args.brightness != None
+                else identity_transform,
+                transforms.ColorJitter(contrast=args.contrast)
+                if args.contrast != None
+                else identity_transform,
+                transforms.ColorJitter(saturation=args.saturation)
+                if args.saturation != None
+                else identity_transform,
+                transforms.ColorJitter(hue=args.hue)
+                if args.hue != None
+                else identity_transform,
+                transforms.RandomPerspective(args.rand_perspective)
+                if args.rand_perspective != None
+                else identity_transform,
+                transforms.RandomResizedCrop(
+                    size=self.resize, scale=(1 - args.random_resized_crop, 1 + args.random_resized_crop)
+                )
+                if args.random_resized_crop != None
+                else identity_transform,
+                transforms.RandomRotation(degrees=args.random_rotation)
+                if args.random_rotation != None
+                else identity_transform,
                 base_transform
             ]
         )
+        else:
+            self.query_transform = transforms.Compose(
+                [
+                    transforms.Grayscale(num_output_channels=3)
+                    if self.args.G_gray
+                    else identity_transform,
+                    base_transform
+                ]
+            )
 
     def __getitem__(self, index):
         # Init
