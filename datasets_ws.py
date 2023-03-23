@@ -178,9 +178,6 @@ class BaseDataset(data.Dataset):
                 transforms.ColorJitter(hue=args.hue)
                 if args.hue != None
                 else identity_transform,
-                transforms.RandomPerspective(args.rand_perspective)
-                if args.rand_perspective != None
-                else identity_transform,
                 transforms.RandomResizedCrop(
                     size=self.resize, scale=(1 - args.random_resized_crop, 1 + args.random_resized_crop)
                 )
@@ -188,6 +185,9 @@ class BaseDataset(data.Dataset):
                 else identity_transform,
                 transforms.RandomRotation(degrees=args.random_rotation)
                 if args.random_rotation != None
+                else identity_transform,
+                transforms.RandomPerspective(args.rand_perspective)
+                if args.rand_perspective != None
                 else identity_transform,
                 transforms.RandomApply([transforms.GaussianBlur(kernel_size=rargs.random_blur)], p=0.5)
                 if args.random_blur != None
@@ -418,15 +418,17 @@ class TripletsDataset(BaseDataset):
                 transforms.ColorJitter(hue=args.hue)
                 if args.hue != None
                 else identity_transform,
-                transforms.RandomPerspective(args.rand_perspective)
-                if args.rand_perspective != None
-                else identity_transform,
                 transforms.RandomResizedCrop(
                     size=self.resize, scale=(1 - args.random_resized_crop, 1 + args.random_resized_crop)
                 )
                 if args.random_resized_crop != None
                 else identity_transform,
                 transforms.RandomRotation(degrees=args.random_rotation)
+                if args.random_rotation != None
+                else identity_transform,
+                transforms.RandomPerspective(args.rand_perspective)
+                if args.rand_perspective != None
+                else identity_transform,
                 if args.random_rotation != None
                 else identity_transform,
                 self.resized_transform,
