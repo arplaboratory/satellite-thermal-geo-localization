@@ -2,6 +2,10 @@
 
 This is the official repository for Long-range UAV Thermal Geo-localization with Satellite Imagery.
 
+**Developer: Jiuhong Xiao<br />
+Affiliation: [NYU ARPL](https://wp.nyu.edu/arpl/)<br />
+Maintainer: Jiuhong Xiao (jx1190@nyu.edu)<br />**
+
 ## Dataset
 Dataset link: [Download](https://long-range-uav-thermal.s3.me-central-1.amazonaws.com/thermal_h5_datasets.zip)
 
