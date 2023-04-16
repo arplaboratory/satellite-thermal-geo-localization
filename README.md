@@ -31,7 +31,7 @@ fdcb2e12d9a29b8d20a4cbd88bfe430c  val_queries.h5
 ```
 
 ## Conda Environment Setup
-Our repository requires a conda environment. Relevant package is listed in ``env.yml``. Run the following command to setup the conda environment.
+Our repository requires a conda environment. Relevant packages are listed in ``env.yml``. Run the following command to setup the conda environment.
 ```
 conda env create -f env.yml
 ```
