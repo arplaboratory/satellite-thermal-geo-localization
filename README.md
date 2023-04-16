@@ -30,6 +30,12 @@ b44ee39173bf356b24690ed6933a6792  train_queries.h5
 fdcb2e12d9a29b8d20a4cbd88bfe430c  val_queries.h5
 ```
 
+## Conda Environment Setup
+Our repository requires a conda environment. Relevant package is listed in ``env.yml``. Run the following command to setup the conda environment.
+```
+conda env create -f env.yml
+```
+
 ## Training
 You can find the training scripts and evaluation scripts in ``scripts`` folder. The scripts is for slurm system to submit sbatch job. If you want to run bash command, change the suffix from ``sbatch`` to ``sh`` and run with bash.
 
