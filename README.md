@@ -8,7 +8,7 @@ Maintainer: Jiuhong Xiao (jx1190@nyu.edu)<br />**
 
 ## Dataset
 Dataset link: [Download](https://long-range-uav-thermal.s3.me-central-1.amazonaws.com/thermal_h5_datasets.zip)  
-Second link: [Download](https://drive.google.com/drive/folders/18of5Tr6BlEg316IxusnJmo514mPCV8MI?usp=sharing)
+Alternate google drive link: [Download](https://drive.google.com/drive/folders/18of5Tr6BlEg316IxusnJmo514mPCV8MI?usp=sharing)
 
 The ``dataset`` folder should be created in the root folder with the following structure
 
