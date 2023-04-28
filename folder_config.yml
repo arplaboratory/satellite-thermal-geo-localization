@@ -34,6 +34,18 @@ thermalmapping:
     - [2700, 1800, 4200, 9450]
     - [1040, 1400, 2710, 9400]
     - [2650, 1800, 5100, 9350]
+thermalmappingDJI:
+  name: 202302_2023_03_west_of_rimah_DJI
+  maps:
+    - 202302_west_of_rimah_daytime.tif
+    - 202303_west_of_rimah_nighttime.tif
+    - 202303_west_of_rimah_RGB_old.tif
+    - 202303_west_of_rimah_RGB.tif
+  valid_regions:
+    - [650, 1700, 4500, 9250]
+    - [600, 1900, 4500, 9250]
+    - [600, 1900, 4500, 9250]
+    - [600, 1900, 4500, 9250]
 foxtechmapping:
   name: 20220603_west_of_rimah_foxtech_mapping
   maps:
