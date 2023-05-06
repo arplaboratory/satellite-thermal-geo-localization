@@ -7,7 +7,7 @@ Affiliation: [NYU ARPL](https://wp.nyu.edu/arpl/)<br />
 Maintainer: Jiuhong Xiao (jx1190@nyu.edu)<br />**
 
 ## Dataset
-Dataset link: [Download](https://drive.google.com/drive/folders/18of5Tr6BlEg316IxusnJmo514mPCV8MI?usp=sharing)
+Dataset link: [Download](https://long-range-uav-thermal.s3.me-central-1.amazonaws.com/thermal_h5_datasets.zip)
 
 The ``dataset`` folder should be created in the root folder with the following structure
 
