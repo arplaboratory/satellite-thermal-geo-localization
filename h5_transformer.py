@@ -72,25 +72,21 @@ def create_h5_file(args, name, split, sample_num):
         else:
             raise ValueError('Generate test option is false. Please add --generate_test to generate test set.')
     elif args.region_num == 3:
-        # Easy: train at 0 - 4500, val at 4500 - 5500, test at 5500 - for thermal
-        # Hard: train at 0 - 3000, val at 3000 - 5000, test at 5000 - for thermal
-        TRAIN_X_OFFSET = 3000
-        VAL_X_OFFSET = 5000
         if split == 'train':
             database_queries_region = [valid_region[0] + args.crop_width//2,
                                     valid_region[1] + args.crop_width//2,
-                                    valid_region[2] - args.crop_width//2,
-                                    valid_region[1] + TRAIN_X_OFFSET - args.crop_width//2]  # top, left, bottom, right
+                                    (valid_region[0] + valid_region[2])//2 - args.crop_width//2,
+                                    (valid_region[1] + valid_region[3])//2 - args.crop_width//2]  # top, left, bottom, right
             print(f'Train region: {database_queries_region}')
         elif split == 'val':
             database_queries_region = [valid_region[0] + args.crop_width//2,
-                                    valid_region[1] + TRAIN_X_OFFSET + args.crop_width//2,
-                                    valid_region[2] - args.crop_width//2,
-                                    valid_region[1] + VAL_X_OFFSET - args.crop_width//2]  # top, left, bottom, right
+                                    (valid_region[1] + valid_region[3])//2 + args.crop_width//2,
+                                    (valid_region[0] + valid_region[2])//2 - args.crop_width//2,
+                                    valid_region[3] - args.crop_width//2]  # top, left, bottom, right
             print(f'Val region: {database_queries_region}')
         else:
-            database_queries_region = [valid_region[0] + args.crop_width//2,
-                                    valid_region[1] + VAL_X_OFFSET + args.crop_width//2,
+            database_queries_region = [(valid_region[0] + valid_region[2])//2 + args.crop_width//2,
+                                    valid_region[1] + args.crop_width//2,
                                     valid_region[2] - args.crop_width//2,
                                     valid_region[3] - args.crop_width//2]  # top, left, bottom, right
             print(f'Test region: {database_queries_region}')
@@ -195,7 +191,7 @@ if __name__ == "__main__":
         "--database_name",
         type=str,
         choices=['satellite', 'sirmionemapping',
-                 'thermalmapping', 'foxtechmapping', 'ADASI', 'ADASI_thermal'],
+                 'thermalmapping', 'foxtechmapping', 'ADASI', 'ADASI_thermal', 'thermalmappingDJI'],
         help="The name of database map you want to use"
     )
     parser.add_argument(
@@ -207,7 +203,7 @@ if __name__ == "__main__":
         "--queries_name",
         type=str,
         choices=['satellite', 'sirmionemapping',
-                 'thermalmapping', 'foxtechmapping', 'ADASI', 'ADASI_thermal'],
+                 'thermalmapping', 'foxtechmapping', 'ADASI', 'ADASI_thermal', 'thermalmappingDJI'],
         help="The name of queries map you want to use"
     )
     parser.add_argument(
