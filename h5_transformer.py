@@ -72,23 +72,23 @@ def create_h5_file(args, name, split, sample_num):
         else:
             raise ValueError('Generate test option is false. Please add --generate_test to generate test set.')
     elif args.region_num == 3:
-        if split == 'train':
-            database_queries_region = [valid_region[0] + args.crop_width//2,
-                                    valid_region[1] + args.crop_width//2,
-                                    (valid_region[0] + valid_region[2])//2 - args.crop_width//2,
-                                    (valid_region[1] + valid_region[3])//2 - args.crop_width//2]  # top, left, bottom, right
-            print(f'Train region: {database_queries_region}')
-        elif split == 'val':
-            database_queries_region = [valid_region[0] + args.crop_width//2,
-                                    (valid_region[1] + valid_region[3])//2 + args.crop_width//2,
-                                    (valid_region[0] + valid_region[2])//2 - args.crop_width//2,
-                                    valid_region[3] - args.crop_width//2]  # top, left, bottom, right
-            print(f'Val region: {database_queries_region}')
-        else:
+        if split == 'train': # bottom left
             database_queries_region = [(valid_region[0] + valid_region[2])//2 + args.crop_width//2,
-                                    valid_region[1] + args.crop_width//2,
-                                    valid_region[2] - args.crop_width//2,
-                                    valid_region[3] - args.crop_width//2]  # top, left, bottom, right
+                                        valid_region[1] + args.crop_width//2,
+                                        valid_region[2] - args.crop_width//2,
+                                        (valid_region[1] + valid_region[3])//2 - args.crop_width//2]  # top, left, bottom, right
+            print(f'Train region: {database_queries_region}')
+        elif split == 'val': # bottom right
+            database_queries_region = [(valid_region[0] + valid_region[2])//2 + args.crop_width//2,
+                                       (valid_region[1] + valid_region[3])//2 + args.crop_width//2,
+                                        valid_region[2] - args.crop_width//2,
+                                        valid_region[3] - args.crop_width//2]  # top, left, bottom, right
+            print(f'Val region: {database_queries_region}')
+        else: # top
+            database_queries_region = [valid_region[0] + args.crop_width//2,
+                                       valid_region[1] + args.crop_width//2,
+                                      (valid_region[0] + valid_region[2])//2 - args.crop_width//2,
+                                       valid_region[3] - args.crop_width//2]  # top, left, bottom, right
             print(f'Test region: {database_queries_region}')
     else:
         # train, val and test at the entire region
