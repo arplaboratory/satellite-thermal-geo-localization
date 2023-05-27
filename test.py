@@ -553,8 +553,8 @@ def test_translation_pix2pix_generate_h5(args, eval_ds, model, exclude_test_regi
                 output_images = output * 0.5 + 0.5
                 for i in range(len(database_path)):
                     generated_query = transforms.Grayscale(num_output_channels=3)(transforms.Resize(args.resize)(transforms.ToPILImage()(output_images[i].cpu())))
-                    cood_y = database_path[i].split("@")[1]
-                    cood_x = database_path[i].split("@")[2]
+                    cood_y = int(database_path[i].split("@")[1])
+                    cood_x = int(database_path[i].split("@")[2])
                     if exclude_test_region is not None:
                         if cood_y >= exclude_test_region[0] and cood_y <= exclude_test_region[2] and cood_x >= exclude_test_region[1] and cood_x <= exclude_test_region[3]:
                             logging.debug("Exclude generating image in test region")
