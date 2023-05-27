@@ -279,11 +279,12 @@ def test(args, eval_ds, model, model_db=None, test_method="hard_resize", pca=Non
 
     logging.debug("Calculating recalls")
     if args.prior_location_threshold == -1:
-        if args.use_faiss_gpu:
-            res = faiss.StandardGpuResources()
-            faiss_index = faiss.GpuIndexFlatL2(res, args.features_dim)
-        else:
-            faiss_index = faiss.IndexFlatL2(args.features_dim)
+        # if args.use_faiss_gpu:
+        #     res = faiss.StandardGpuResources()
+        #     faiss_index = faiss.GpuIndexFlatL2(res, args.features_dim)
+        # else:
+        #     faiss_index = faiss.IndexFlatL2(args.features_dim)
+        faiss_index = faiss.IndexFlatL2(args.features_dim)
         faiss_index.add(database_features)
         distances, predictions = faiss_index.search(
             queries_features, max(args.recall_values)
@@ -515,7 +516,7 @@ def test_translation_pix2pix(args, eval_ds, model, visual_current=False, visual_
             
     return [psnr_sum], psnr_str
 
-def test_translation_pix2pix_generate_h5(args, eval_ds, model):
+def test_translation_pix2pix_generate_h5(args, eval_ds, model, exclude_test_region=None):
     """Compute PSNR of the given dataset and compute the recalls."""
     
     if args.G_test_norm == "batch":
@@ -554,6 +555,10 @@ def test_translation_pix2pix_generate_h5(args, eval_ds, model):
                     generated_query = transforms.Grayscale(num_output_channels=3)(transforms.Resize(args.resize)(transforms.ToPILImage()(output_images[i].cpu())))
                     cood_y = database_path[i].split("@")[1]
                     cood_x = database_path[i].split("@")[2]
+                    if exclude_test_region is not None:
+                        if cood_y >= exclude_test_region[0] and cood_y <= exclude_test_region[2] and cood_x >= exclude_test_region[1] and cood_x <= exclude_test_region[3]:
+                            logging.debug("Exclude generating image in test region")
+                            continue
                     name = f"@{cood_y}@{cood_x}"
                     img_names.append(name)
                     img_np = np.array(generated_query)
