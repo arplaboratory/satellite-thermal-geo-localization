@@ -2,6 +2,16 @@
 
 This is the official repository for [Long-range UAV Thermal Geo-localization with Satellite Imagery](https://arxiv.org/abs/2306.02994v1).
 
+```
+@misc{xiao2023longrange,
+      title={Long-range UAV Thermal Geo-localization with Satellite Imagery}, 
+      author={Jiuhong Xiao and Daniel Tortei and Eloy Roura and Giuseppe Loianno},
+      year={2023},
+      eprint={2306.02994},
+      archivePrefix={arXiv},
+      primaryClass={cs.RO}
+}
+```
 **Developer: Jiuhong Xiao<br />
 Affiliation: [NYU ARPL](https://wp.nyu.edu/arpl/)<br />
 Maintainer: Jiuhong Xiao (jx1190@nyu.edu)<br />**
@@ -104,3 +114,5 @@ Our implementation refers to the following repositories and appreciate their exc
 https://github.com/gmberton/deep-visual-geo-localization-benchmark  
 https://github.com/fungtion/DANN  
 https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix
+
+## Citation
