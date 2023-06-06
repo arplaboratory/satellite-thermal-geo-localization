@@ -1,6 +1,6 @@
 # satellite-thermal-geo-localization
 
-This is the official repository for [Long-range UAV Thermal Geo-localization with Satellite Imagery](https://arxiv.org/abs/2306.02994v1).
+This is the official repository for [Long-range UAV Thermal Geo-localization with Satellite Imagery](https://arxiv.org/abs/2306.02994).
 
 ```
 @misc{xiao2023longrange,
