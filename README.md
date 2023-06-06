@@ -114,5 +114,3 @@ Our implementation refers to the following repositories and appreciate their exc
 https://github.com/gmberton/deep-visual-geo-localization-benchmark  
 https://github.com/fungtion/DANN  
 https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix
-
-## Citation
