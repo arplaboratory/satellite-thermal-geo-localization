@@ -103,13 +103,13 @@ class BaseDataset(data.Dataset):
             database_image_name_decoded = database_image_name.decode("UTF-8")
             while database_image_name_decoded in self.database_name_dict:
                 northing = [str(float(database_image_name_decoded.split("@")[2])+0.00001)]
-                database_image_name_decoded = "@".join(list(os.path.split("@")[:2]) + northing + list(os.path.split("@")[3:]))
+                queries_image_name_decoded = "@".join(list(database_image_name_decoded.split("@")[:2]) + northing + list(database_image_name_decoded.split("@")[3:]))
             self.database_name_dict[database_image_name_decoded] = index
         for index, queries_image_name in enumerate(queries_folder_h5_df["image_name"]):
             queries_image_name_decoded = queries_image_name.decode("UTF-8")
             while queries_image_name_decoded in self.queries_name_dict:
                 northing = [str(float(queries_image_name_decoded.split("@")[2])+0.00001)]
-                queries_image_name_decoded = "@".join(list(os.path.split("@")[:2]) + northing + list(os.path.split("@")[3:]))
+                queries_image_name_decoded = "@".join(list(queries_image_name_decoded.split("@")[:2]) + northing + list(queries_image_name_decoded.split("@")[3:]))
             self.queries_name_dict[queries_image_name_decoded] = index
 
         # Read paths and UTM coordinates for all images.
