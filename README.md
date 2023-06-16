@@ -1,6 +1,20 @@
 # satellite-thermal-geo-localization
 
-This is the official repository for Long-range UAV Thermal Geo-localization with Satellite Imagery.
+This is the official repository for [Long-range UAV Thermal Geo-localization with Satellite Imagery](https://arxiv.org/abs/2306.02994).
+
+```
+@misc{xiao2023longrange,
+      title={Long-range UAV Thermal Geo-localization with Satellite Imagery}, 
+      author={Jiuhong Xiao and Daniel Tortei and Eloy Roura and Giuseppe Loianno},
+      year={2023},
+      eprint={2306.02994},
+      archivePrefix={arXiv},
+      primaryClass={cs.RO}
+}
+```
+**Developer: Jiuhong Xiao<br />
+Affiliation: [NYU ARPL](https://wp.nyu.edu/arpl/)<br />
+Maintainer: Jiuhong Xiao (jx1190@nyu.edu)<br />**
 
 ## Dataset
 Dataset link: [Download](https://long-range-uav-thermal.s3.me-central-1.amazonaws.com/thermal_h5_datasets.zip)
@@ -28,6 +42,12 @@ f075a7a6db5d5d61be88d252f7d6e05b  train_database.h5
 b44ee39173bf356b24690ed6933a6792  train_queries.h5
 31923c28dd074ddaacf0c463681f7d2b  val_database.h5
 fdcb2e12d9a29b8d20a4cbd88bfe430c  val_queries.h5
+```
+
+## Conda Environment Setup
+Our repository requires a conda environment. Relevant packages are listed in ``env.yml``. Run the following command to setup the conda environment.
+```
+conda env create -f env.yml
 ```
 
 ## Training
