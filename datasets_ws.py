@@ -478,7 +478,7 @@ class TripletsDataset(BaseDataset):
                                                   1, self.negs_num_per_query)
         )
 
-        if self.args.G_contrast:
+        if self.args.G_contrast and self.args.split!="extended": # Avoid double CE for extended dataset (TGM has already generated enhanced results)
             query = self.query_transform(
                 transforms.functional.adjust_contrast(self._find_img_in_h5(query_index, "queries"), contrast_factor=3))
         else:
