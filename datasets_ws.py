@@ -104,7 +104,7 @@ class BaseDataset(data.Dataset):
             database_image_name_decoded = database_image_name.decode("UTF-8")
             while database_image_name_decoded in self.database_name_dict:
                 northing = [str(float(database_image_name_decoded.split("@")[2])+0.00001)]
-                queries_image_name_decoded = "@".join(list(database_image_name_decoded.split("@")[:2]) + northing + list(database_image_name_decoded.split("@")[3:]))
+                database_image_name_decoded = "@".join(list(database_image_name_decoded.split("@")[:2]) + northing + list(database_image_name_decoded.split("@")[3:]))
             self.database_name_dict[database_image_name_decoded] = index
         for index, queries_image_name in enumerate(queries_folder_h5_df["image_name"]):
             queries_image_name_decoded = queries_image_name.decode("UTF-8")
