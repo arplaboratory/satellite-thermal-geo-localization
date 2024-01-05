@@ -197,7 +197,7 @@ class BaseDataset(data.Dataset):
                 transforms.RandomPerspective(args.rand_perspective)
                 if args.rand_perspective != None
                 else identity_transform,
-                transforms.RandomApply([transforms.GaussianBlur(kernel_size=rargs.random_blur)], p=0.5)
+                transforms.RandomApply([transforms.GaussianBlur(kernel_size=args.random_blur)], p=0.5)
                 if args.random_blur != None
                 else identity_transform,
                 base_transform
