@@ -16,6 +16,11 @@ from torch.utils.data.dataloader import DataLoader
 import h5py
 import time
 
+inv_normalize = transforms.Normalize(
+   mean=[-0.485/0.229, -0.456/0.224, -0.406/0.225],
+   std=[1/0.229, 1/0.224, 1/0.225]
+)
+
 base_transform = transforms.Compose(
     [
         transforms.ToTensor(),
@@ -331,8 +336,8 @@ class BaseDataset(data.Dataset):
             real_path = path[len("queries_"):]
             image_index = self.queries_name_dict[real_path]
             image = queries_folder_h5_df["image_data"][image_index]
-            if np.count_nonzero(image==0):
-                queries_with_black_region.append(index)
+            # if np.count_nonzero(image==0):
+            #     queries_with_black_region.append(index)
         queries_folder_h5_df.close()
         return queries_with_black_region
 
@@ -1025,7 +1030,7 @@ class TranslationDataset(BaseDataset):
         self.hard_positives_per_query = list(
             knn.radius_neighbors(
                 self.queries_utms,
-                radius=0.1,  # 0.1 meters
+                radius=0.01,  # 0.1 meters
                 return_distance=False,
             )
         )
@@ -1100,7 +1105,10 @@ class TranslationDataset(BaseDataset):
         self.compute_pairs_random(args)
 
     def get_best_positive_index(self, query_index):
-        best_positive_index = self.hard_positives_per_query[query_index].item()
+        try:
+            best_positive_index = self.hard_positives_per_query[query_index].item()
+        except:
+            best_positive_index = np.random.choice(self.hard_positives_per_query[query_index]).item()
         return best_positive_index
 
     def compute_pairs_random(self, args):
