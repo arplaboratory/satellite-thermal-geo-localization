@@ -3,7 +3,7 @@
 This is the official repository for [Long-range UAV Thermal Geo-localization with Satellite Imagery](https://arxiv.org/abs/2306.02994).
 
 ```
-@INPROCEEDINGS{10342068,
+@INPROCEEDINGS{xiao2023stgl,
   author={Xiao, Jiuhong and Tortei, Daniel and Roura, Eloy and Loianno, Giuseppe},
   booktitle={2023 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS)}, 
   title={Long-Range UAV Thermal Geo-Localization with Satellite Imagery}, 
