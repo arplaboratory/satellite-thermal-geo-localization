@@ -18,7 +18,7 @@ Affiliation: [NYU ARPL](https://wp.nyu.edu/arpl/)<br />
 Maintainer: Jiuhong Xiao (jx1190@nyu.edu)<br />**
 
 ## Dataset
-Dataset link: [Download](https://huggingface.co/datasets/xjh19972/boson-nighttime/tree/main/satellite-thermal-dataset-v1****)
+Dataset link: [Download](https://huggingface.co/datasets/xjh19972/boson-nighttime/tree/main/satellite-thermal-dataset-v1)
 
 The ``dataset`` folder should be created in the root folder with the following structure
 
