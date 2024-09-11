@@ -2,6 +2,9 @@
 
 This is the official repository for [Long-range UAV Thermal Geo-localization with Satellite Imagery](https://arxiv.org/abs/2306.02994).
 
+Related works:  
+* STHN: Deep Homography Estimation for UAV Thermal Geo-localization with Satellite Imagery [[Project]](https://xjh19971.github.io/STHN)
+
 ```
 @INPROCEEDINGS{xiao2023stgl,
   author={Xiao, Jiuhong and Tortei, Daniel and Roura, Eloy and Loianno, Giuseppe},
@@ -16,6 +19,7 @@ This is the official repository for [Long-range UAV Thermal Geo-localization wit
 **Developer: Jiuhong Xiao<br />
 Affiliation: [NYU ARPL](https://wp.nyu.edu/arpl/)<br />
 Maintainer: Jiuhong Xiao (jx1190@nyu.edu)<br />**
+
 
 ## Dataset
 Dataset link: [Download](https://huggingface.co/datasets/xjh19972/boson-nighttime/tree/main/satellite-thermal-dataset-v1)
