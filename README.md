@@ -114,7 +114,7 @@ Note that running evaluation scripts requires two arguments: **SGM_model_folder_
 Find the test results in in ``./test/default/model_folder_name/satellite_0_thermalmapping135-datetime``. There will be two folders. This first reports **R@1** and **R@5**. The second reports **R_512@1**, **R_512@5** and **L^512_2**.
 
 ## Pretrained Models
-We provide pretrained TGM and STGL models: [Download](https://drive.google.com/drive/folders/1hprzDQNwhFIQbLEa7p9WQUMMJHnYjdxk?usp=sharing).
+We provide pretrained TGM and STGL models: [Download](https://drive.google.com/drive/folders/1hU9TjJ3Kvm1ct0B4ddz8uE_pTl79_qVV?usp=sharing).
 
 However, due to updates in the code, these pretrained weights may not be compatible with this repository. We recommend using them with https://github.com/arplaboratory/STHN/tree/main/global_pipeline, which offers the same functionality as this repository.
 
