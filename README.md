@@ -4,6 +4,7 @@ This is the official repository for [Long-range UAV Thermal Geo-localization wit
 
 Related works:  
 * STHN: Deep Homography Estimation for UAV Thermal Geo-localization with Satellite Imagery [[Project]](https://xjh19971.github.io/STHN)
+* UASTHN: Uncertainty-Aware Deep Homography Estimation for UAV Satellite-Thermal Geo-localization [[Project]](https://xjh19971.github.io/UASTHN)
 
 ```
 @INPROCEEDINGS{xiao2023stgl,
