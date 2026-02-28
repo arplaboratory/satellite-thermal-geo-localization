@@ -17,10 +17,6 @@ Related works:
   pages={5820-5827},
   doi={10.1109/IROS55552.2023.10342068}}
 ```
-**Developer: Jiuhong Xiao<br />
-Affiliation: [NYU ARPL](https://wp.nyu.edu/arpl/)<br />
-Maintainer: Jiuhong Xiao (jx1190@nyu.edu)<br />**
-
 
 ## Dataset
 Dataset link: [Download](https://huggingface.co/datasets/xjh19972/boson-nighttime/tree/main/satellite-thermal-dataset-v1)
