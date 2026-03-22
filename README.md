@@ -1,5 +1,11 @@
 # satellite-thermal-geo-localization
 
+[![arXiv](https://img.shields.io/badge/arXiv-2306.02994-B31B1B.svg)](https://arxiv.org/abs/2306.02994)
+[![Hugging Face](https://img.shields.io/badge/Hugging%20Face%20Dataset-Boson--nighttime-blue.svg)](https://huggingface.co/datasets/xjh19972/boson-nighttime)
+[![Hugging Face](https://img.shields.io/badge/Hugging%20Face%20Model-TGM-blue.svg)](https://huggingface.co/xjh19972/TGM)
+[![Hugging Face](https://img.shields.io/badge/Hugging%20Face%20Model-SGM-blue.svg)](https://huggingface.co/xjh19972/SGM)
+[![Resources](https://img.shields.io/badge/Resources-STGL-green.svg)](https://drive.google.com/drive/folders/1hU9TjJ3Kvm1ct0B4ddz8uE_pTl79_qVV?usp=sharing)
+
 This is the official repository for [Long-range UAV Thermal Geo-localization with Satellite Imagery](https://arxiv.org/abs/2306.02994).
 
 Related works:  
