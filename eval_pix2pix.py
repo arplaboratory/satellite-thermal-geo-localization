@@ -30,10 +30,7 @@ logging.info(f"Arguments: {args}")
 logging.info(f"The outputs are being saved in {args.save_dir}")
 
 ######################################### MODEL #########################################
-if args.G_gray:
-    model = network.pix2pix(args, 3, 1)
-else:
-    model = network.pix2pix(args, 3, 3)
+model = network.pix2pix(args, 3, 1)
 
 if args.resume is not None:
     logging.info(f"Resuming model from {args.resume}")

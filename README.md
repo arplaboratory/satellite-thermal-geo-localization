@@ -18,6 +18,28 @@ Related works:
   doi={10.1109/IROS55552.2023.10342068}}
 ```
 
+## Conda Environment Setup
+Our repository requires a conda environment. Relevant packages are listed in ``env.yml``. Run the following command to setup the conda environment.
+```
+conda env create -f env.yml
+```
+
+## Simple Inference Demo
+
+We provide demo scripts that automatically download pretrained models from Hugging Face and run inference on the example images in ``examples/``.
+
+**TGM Demo** (Satellite → Thermal Generation):
+```bash
+python TGM_demo.py
+```
+Generates a synthetic thermal image from a satellite patch using the pretrained TGM ([xjh19972/TGM](https://huggingface.co/xjh19972/TGM)). Results are saved to ``examples/tgm/``.
+
+**SGM Demo** (Thermal → Satellite Retrieval):
+```bash
+python SGM_demo.py
+```
+Extracts features from a thermal query and retrieves the closest satellite patches using the pretrained SGM ([xjh19972/SGM](https://huggingface.co/xjh19972/SGM)). Results are saved to ``examples/sgm/``.
+
 ## Dataset
 Dataset link: [Download](https://huggingface.co/datasets/xjh19972/boson-nighttime/tree/main/satellite-thermal-dataset-v1)
 
@@ -44,12 +66,6 @@ f075a7a6db5d5d61be88d252f7d6e05b  train_database.h5
 b44ee39173bf356b24690ed6933a6792  train_queries.h5
 31923c28dd074ddaacf0c463681f7d2b  val_database.h5
 fdcb2e12d9a29b8d20a4cbd88bfe430c  val_queries.h5
-```
-
-## Conda Environment Setup
-Our repository requires a conda environment. Relevant packages are listed in ``env.yml``. Run the following command to setup the conda environment.
-```
-conda env create -f env.yml
 ```
 
 ## Training
@@ -113,7 +129,33 @@ Find the test results in in ``./test/default/model_folder_name/satellite_0_therm
 ## Pretrained Models
 We provide pretrained TGM and STGL models: [Download](https://drive.google.com/drive/folders/1hU9TjJ3Kvm1ct0B4ddz8uE_pTl79_qVV?usp=sharing).
 
-However, due to updates in the code, these pretrained weights may not be compatible with this repository. We recommend using them with https://github.com/arplaboratory/STHN/tree/main/global_pipeline, which offers the same functionality as this repository.
+### demo branch (recommended)
+
+The `demo` branch aligns the codebase with [STHN/global_pipeline](https://github.com/arplaboratory/STHN/tree/main/global_pipeline), ensuring full compatibility with the pretrained model weights. Key changes include:
+
+- **Model architecture alignment**: `GeoLocalizationNet` now matches STHN's version (hardcoded `features_dim=65536` for NetVLAD/CRN with FC layer, simplified domain adaptation to boolean `--DA` flag, removed `--add_bn`/`--remove_relu`/`--conv_output_dim`/`--separate_branch` options)
+- **TGM always outputs grayscale**: Removed `--G_gray` flag; TGM always generates single-channel (grayscale) thermal images
+- **G_contrast is now string-based**: Changed from boolean `--G_contrast` to `--G_contrast {none, manual, autocontrast, equalize}`
+- **Removed torchscan dependency**
+
+To evaluate with pretrained SGM weights on this branch:
+```bash
+python eval.py --resume='path/to/best_model.pth' \
+  --dataset_name=satellite_0_thermalmapping_135 --datasets_folder ./datasets \
+  --infer_batch_size 16 --backbone resnet50conv4 --aggregation gem \
+  --fc_output_dim 4096 --G_contrast manual
+```
+
+To evaluate with pretrained TGM weights:
+```bash
+python eval_pix2pix.py --resume='path/to/best_model.pth' \
+  --dataset_name=satellite_0_thermalmapping_135 --datasets_folder ./datasets \
+  --G_net unet --GAN_upsample bilinear --GAN_norm batch
+```
+
+### main branch
+
+The pretrained weights on the `main` branch may not be compatible due to code updates. Use the `demo` branch instead for pretrained model evaluation.
 
 ## Acknowledgement
 Our implementation refers to the following repositories and appreciate their excellent work.

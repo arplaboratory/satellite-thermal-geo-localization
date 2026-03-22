@@ -8,35 +8,31 @@ def parse_arguments():
         description="Benchmarking Visual Geolocalization",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    parser.add_argument(
-        "--use_extended_data",
-        action="store_true",
-        help="Use extended data from pix2pix",
-    )
-    parser.add_argument(
-        "--G_test_norm",
-        type=str,
-        default="batch",
-        choices=["batch", "instance"],
-        help="Test norm for G",
-    )
+    #####################################################################
+    # Parameters for Generator
     parser.add_argument(
         "--G_tanh",
         action="store_true",
         help="tanh for G",
     )
     parser.add_argument(
+        "--G_contrast",
+        type=str,
+        default="none",
+        choices=["none", "manual", "autocontrast", "equalize"],
+        help="G_contrast"
+    )
+    parser.add_argument(
+        "--force_ce",
+        action="store_true",
+        help="Force CE in extended dataset"
+    )
+    # Parameters for GAN
+    parser.add_argument(
         "--GAN_epochs_decay",
         type=int,
         default=0,
         help="lr decay epoch num",
-    )
-    parser.add_argument(
-        "--GAN_lr_policy",
-        type=str,
-        default="linear",
-        choices="linear",
-        help="lr scheduler.",
     )
     parser.add_argument(
         "--GAN_resize",
@@ -73,32 +69,6 @@ def parse_arguments():
         help="Norm layer in GAN"
     )
     parser.add_argument(
-        "--G_contrast",
-        action="store_true",
-        help="G_contrast"
-    )
-    parser.add_argument(
-        "--G_gray",
-        action="store_true",
-        help="G_gray"
-    )
-    parser.add_argument(
-        "--G_loss_lambda",
-        type=float,
-        default=100.0,
-        help="G_loss_lambda only for pix2pix"
-    )
-    parser.add_argument(
-        "--visual_all",
-        action="store_true",
-        help="visual_all"
-    )
-    parser.add_argument(
-        "--DA_only_positive",
-        action="store_true",
-        help="Domain adaptation only applys to positive database"
-    )
-    parser.add_argument(
         "--D_net",
         type=str,
         default="none",
@@ -113,32 +83,51 @@ def parse_arguments():
         help="G_net"
     )
     parser.add_argument(
+        "--G_loss_lambda",
+        type=float,
+        default=100.0,
+        help="G_loss_lambda only for pix2pix"
+    )
+    #####################################################################
+    # Parameters for DANN
+    parser.add_argument(
+        "--DA_only_positive",
+        action="store_true",
+        help="Domain adaptation only applys to positive database"
+    )
+    parser.add_argument(
         "--lambda_DA",
         type=float,
-        default=1.0,
+        default=0.1,
         help="Domain adaptation loss weight"
     )
     parser.add_argument(
         "--DA",
-        type=str,
-        default='none',
-        choices=['none', 'DANN_before', 'DANN_after', 'DANN_before_conv'],
+        action="store_true",
         help="Domain adaptation"
     )
+    #####################################################################
     parser.add_argument(
-        "--add_bn",
-        action="store_true",
-        help="Add bn to compression layers"
+        "--use_sparse_database",
+        type=int,
+        default=-1,
+        choices=[512, 256, 128, 64],
+        help="Domain adaptation loss weight"
     )
     parser.add_argument(
-        "--remove_relu",
+        "--use_extended_data",
         action="store_true",
-        help="Remove last relu layer of backbone"
+        help="Use extended data from pix2pix",
     )
     parser.add_argument(
-        "--use_faiss_gpu",
+        "--exclude_val_region",
         action="store_true",
-        help="Choose if we use faiss gpu version for mining. Only work for full and partial."
+        help="Exclude validation region from extended data",
+    )
+    parser.add_argument(
+        "--visual_all",
+        action="store_true",
+        help="visual_all"
     )
     parser.add_argument(
         "--prior_location_threshold",
@@ -151,16 +140,6 @@ def parse_arguments():
         type=int,
         default=1,
         help="Calculate the position from weighted averaged best n. If n = 1, then it is equivalent to top 1"
-    )
-    parser.add_argument(
-        "--separate_branch",
-        action="store_true",
-        help="Have two separate branches"
-    )
-    parser.add_argument(
-        "--weight_decay",
-        type=float,
-        default=0.0
     )
     parser.add_argument(
         "--train_batch_size",
@@ -306,12 +285,6 @@ def parse_arguments():
         help="Output dimension of fully connected layer. If None, don't use a fully connected layer.",
     )
     parser.add_argument(
-        "--conv_output_dim",
-        type=int,
-        default=None,
-        help="Output dimension of conv layer. If None, don't use a conv layer.",
-    )
-    parser.add_argument(
         "--unfreeze",
         action='store_true',
         help="Unfreeze the first few layers for backbone",
@@ -387,7 +360,7 @@ def parse_arguments():
     parser.add_argument(
         "--recall_values",
         type=int,
-        default=[1, 5, 10, 20],
+        default=[1, 5, 10, 20, 30, 50, 100],
         nargs="+",
         help="Recalls to be computed, such as R@5.",
     )
@@ -424,6 +397,10 @@ def parse_arguments():
         type=str,
         default="default",
         help="Folder name of the current run (saved in ./logs/)",
+    )
+    parser.add_argument(
+        "--output_pairs",
+        action="store_true"
     )
     args = parser.parse_args()
 
@@ -474,16 +451,8 @@ def parse_arguments():
 
     if args.use_best_n < 0:
         raise ValueError("use_best_n must be large than or equal to 0")
-    
-    if args.separate_branch and args.criterion in ["sare_joint", "sare_ind"]:
-        raise ValueError("separate_branch currently only supports triplet loss")
-
-    if args.separate_branch and (args.train_batch_size % torch.cuda.device_count() != 0 or args.infer_batch_size % torch.cuda.device_count() != 0):
-        raise ValueError("separate_branch requires the batch size is the times of gpu number")
-
-    if args.fc_output_dim is not None and args.conv_output_dim is not None:
-        raise ValueError("fc_output_dim and conv_output_dim cannot be used at the same time")
 
     if args.GAN_save_freq < 0:
         raise ValueError()
+
     return args

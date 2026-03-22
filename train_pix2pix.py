@@ -100,10 +100,7 @@ test_ds = datasets_ws.TranslationDataset(
 logging.info(f"Test set: {test_ds}")
 
 # Initialize model
-if args.G_gray:
-    model = network.pix2pix(args, 3, 1, for_training=True)
-else:   
-    model = network.pix2pix(args, 3, 3, for_training=True)
+model = network.pix2pix(args, 3, 1, for_training=True)
 
 model.setup()
 

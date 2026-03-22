@@ -117,11 +117,11 @@ class BaseDataset(data.Dataset):
         self.database_utms = np.array(
             [(path.split("@")[1], path.split("@")[2])
              for path in self.database_paths]
-        ).astype(np.float)
+        ).astype(float)
         self.queries_utms = np.array(
             [(path.split("@")[1], path.split("@")[2])
              for path in self.queries_paths]
-        ).astype(np.float)
+        ).astype(float)
 
         # Find soft_positives_per_query, which are within val_positive_dist_threshold (deafult 25 meters)
         knn = NearestNeighbors(n_jobs=-1)
@@ -160,12 +160,9 @@ class BaseDataset(data.Dataset):
         database_folder_h5_df.close()
         queries_folder_h5_df.close()
 
-        identity_transform = transforms.Lambda(lambda x: x)
         self.query_transform = transforms.Compose(
             [
-                transforms.Grayscale(num_output_channels=3)
-                if self.args.G_gray
-                else identity_transform,
+                transforms.Grayscale(num_output_channels=3),
                 base_transform
             ]
         )
@@ -174,13 +171,22 @@ class BaseDataset(data.Dataset):
         # Init
         if self.database_folder_h5_df is None:
             self.database_folder_h5_df = h5py.File(
-                self.database_folder_h5_path, "r")
+                self.database_folder_h5_path, "r", swmr=True)
             self.queries_folder_h5_df = h5py.File(
-                self.queries_folder_h5_path, "r")
+                self.queries_folder_h5_path, "r", swmr=True)
         if self.is_index_in_queries(index):
-            if self.args.G_contrast:
-                img = self.query_transform(
-                    transforms.functional.adjust_contrast(self._find_img_in_h5(index), contrast_factor=3))
+            if self.args.G_contrast != "none":
+                if self.args.G_contrast == "manual":
+                    img = self.query_transform(
+                        transforms.functional.adjust_contrast(self._find_img_in_h5(index), contrast_factor=3))
+                elif self.args.G_contrast == "autocontrast":
+                    img = self.query_transform(
+                        transforms.functional.autocontrast(self._find_img_in_h5(index)))
+                elif self.args.G_contrast == "equalize":
+                    img = self.query_transform(
+                        transforms.functional.equalize(self._find_img_in_h5(index)))
+                else:
+                    raise NotImplementedError()
             else:
                 img = self.query_transform(
                     self._find_img_in_h5(index))
@@ -366,37 +372,17 @@ class TripletsDataset(BaseDataset):
             ]
         )
 
-        self.query_transform = transforms.Compose(
-            [
-                transforms.Grayscale(num_output_channels=3)
-                if self.args.G_gray
-                else identity_transform,
-                transforms.ColorJitter(brightness=args.brightness)
-                if args.brightness != None
-                else identity_transform,
-                transforms.ColorJitter(contrast=args.contrast)
-                if args.contrast != None
-                else identity_transform,
-                transforms.ColorJitter(saturation=args.saturation)
-                if args.saturation != None
-                else identity_transform,
-                transforms.ColorJitter(hue=args.hue)
-                if args.hue != None
-                else identity_transform,
-                transforms.RandomPerspective(args.rand_perspective)
-                if args.rand_perspective != None
-                else identity_transform,
-                transforms.RandomResizedCrop(
-                    size=self.resize, scale=(1 - args.random_resized_crop, 1)
-                )
-                if args.random_resized_crop != None
-                else identity_transform,
-                transforms.RandomRotation(degrees=args.random_rotation)
-                if args.random_rotation != None
-                else identity_transform,
+        self.query_transform = transforms.Compose([
+                transforms.ColorJitter(brightness=args.brightness)       if args.brightness          != None else identity_transform,
+                transforms.ColorJitter(contrast=args.contrast)           if args.contrast            != None else identity_transform,
+                transforms.ColorJitter(saturation=args.saturation)       if args.saturation          != None else identity_transform,
+                transforms.ColorJitter(hue=args.hue)                     if args.hue                 != None else identity_transform,
+                transforms.RandomPerspective(args.rand_perspective)      if args.rand_perspective    != None else identity_transform,
+                transforms.RandomResizedCrop(size=self.resize, scale=(1-args.random_resized_crop, 1))  \
+                                                                         if args.random_resized_crop != None else identity_transform,
+                transforms.RandomRotation(degrees=args.random_rotation)  if args.random_rotation     != None else identity_transform,
                 self.resized_transform,
-            ]
-        )
+        ])
 
         # Find hard_positives_per_query, which are within train_positives_dist_threshold (10 meters)
         knn = NearestNeighbors(n_jobs=-1)
@@ -479,13 +465,22 @@ class TripletsDataset(BaseDataset):
                                                   1, self.negs_num_per_query)
         )
 
-        if self.args.G_contrast:
-            query = self.query_transform(
-                transforms.functional.adjust_contrast(self._find_img_in_h5(query_index, "queries"), contrast_factor=3))
+        if self.args.G_contrast != "none":
+            if self.args.G_contrast == "manual":
+                query = self.query_transform(
+                    transforms.functional.adjust_contrast(self._find_img_in_h5(query_index, "queries"), contrast_factor=3))
+            elif self.args.G_contrast == "autocontrast":
+                query = self.query_transform(
+                    transforms.functional.autocontrast(self._find_img_in_h5(query_index, "queries")))
+            elif self.args.G_contrast == "equalize":
+                query = self.query_transform(
+                    transforms.functional.equalize(self._find_img_in_h5(query_index, "queries")))
+            else:
+                raise NotImplementedError()
         else:
             query = self.query_transform(
                 self._find_img_in_h5(query_index, "queries"))
-                
+
         positive = self.resized_transform(
             self._find_img_in_h5(best_positive_index, "database")
         )
@@ -969,9 +964,7 @@ class TranslationDataset(BaseDataset):
 
         self.query_transform = transforms.Compose(
             [
-                transforms.Grayscale(num_output_channels=1)
-                if self.args.G_gray
-                else identity_transform,
+                transforms.Grayscale(num_output_channels=1),
                 self.resized_transform,
             ]
         )
@@ -1037,13 +1030,22 @@ class TranslationDataset(BaseDataset):
             self.pairs_global_indexes[index], (1, 1)
         )
 
-        if self.args.G_contrast:
-            query = self.query_transform(
-                transforms.functional.adjust_contrast(self._find_img_in_h5(query_index, "queries"), contrast_factor=3))
+        if self.args.G_contrast != "none":
+            if self.args.G_contrast == "manual":
+                query = self.query_transform(
+                    transforms.functional.adjust_contrast(self._find_img_in_h5(query_index, "queries"), contrast_factor=3))
+            elif self.args.G_contrast == "autocontrast":
+                query = self.query_transform(
+                    transforms.functional.autocontrast(self._find_img_in_h5(query_index, "queries")))
+            elif self.args.G_contrast == "equalize":
+                query = self.query_transform(
+                    transforms.functional.equalize(self._find_img_in_h5(query_index, "queries")))
+            else:
+                raise NotImplementedError()
         else:
             query = self.query_transform(
                 self._find_img_in_h5(query_index, "queries"))
-            
+
         positive = self.resized_transform(
             self._find_img_in_h5(best_positive_index, "database")
         )

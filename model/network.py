@@ -49,23 +49,21 @@ class GeoLocalizationNet(nn.Module):
                 self.aggregation = nn.Sequential(self.aggregation, L2Norm(), Flatten())
             elif args.l2 == "none":
                 self.aggregation = nn.Sequential(self.aggregation, Flatten())
-        
+
         if args.fc_output_dim != None:
             # Concatenate fully connected layer to the aggregation layer
+            if args.aggregation in ["netvlad", "crn"]:
+                args.features_dim = 65536
             self.aggregation = nn.Sequential(self.aggregation,
                                              nn.Linear(args.features_dim, args.fc_output_dim),
                                              L2Norm())
             args.features_dim = args.fc_output_dim
-        
-        if args.aggregation in ["netvlad", "crn"] and args.conv_output_dim != None:
+
+        if args.aggregation in ["netvlad", "crn"] and hasattr(args, "conv_output_dim") and args.conv_output_dim != None:
             # Concatenate conv layer to the aggregation layer
             actual_conv_output_dim = int(args.conv_output_dim / args.netvlad_clusters)
             logging.debug(f"Last conv layer dim: {actual_conv_output_dim}")
-            if args.add_bn:
-                self.conv_layer = nn.Sequential(nn.Conv2d(args.features_dim, actual_conv_output_dim, 1, bias=False),
-                                                nn.BatchNorm2d(actual_conv_output_dim),)
-            else:
-                self.conv_layer = nn.Conv2d(args.features_dim, actual_conv_output_dim, 1)
+            self.conv_layer = nn.Conv2d(args.features_dim, actual_conv_output_dim, 1)
             args.features_dim = actual_conv_output_dim
 
         if args.non_local:
@@ -76,59 +74,28 @@ class GeoLocalizationNet(nn.Module):
 
     def create_domain_classifier(self, args):
         domain_classifier = None
-        if self.DA.startswith('DANN_before'):
-            # Input dim = backbone_output_dim * H * W
-            if self.DA == 'DANN_before':
-                domain_classifier = nn.Sequential(nn.Linear(args.features_dim * 32 * 32, 1000, bias=False),
-                                                    nn.BatchNorm1d(1000),
-                                                    nn.ReLU(True),
-                                                    nn.Linear(1000, 2),
-                                                    nn.LogSoftmax(dim=1))
-            elif self.DA == 'DANN_before_conv':
-                domain_classifier = nn.Sequential(nn.Conv2d(args.features_dim, args.features_dim * 2, kernel_size=4, stride=2, bias=False),
-                                                    nn.BatchNorm2d(args.features_dim * 2),
-                                                    nn.ReLU(True),
-                                                    nn.Conv2d(args.features_dim * 2, args.features_dim * 4, kernel_size=4, stride=2, bias=False),
-                                                    nn.BatchNorm2d(args.features_dim * 4),
-                                                    nn.ReLU(True),
-                                                    nn.Conv2d(args.features_dim * 4, args.features_dim * 8, kernel_size=4, stride=2, bias=False),
-                                                    nn.BatchNorm2d(args.features_dim * 8),
-                                                    nn.ReLU(True),
-                                                    nn.Conv2d(args.features_dim * 8, 2, kernel_size=2),
-                                                    nn.Flatten(),
-                                                    nn.LogSoftmax(dim=1))
-        elif self.DA == 'DANN_after':
-            domain_classifier = nn.Sequential(nn.Linear(args.conv_output_dim, 100, bias=False),
-                                                   nn.BatchNorm1d(100),
-                                                   nn.ReLU(True),
-                                                   nn.Linear(100, 2),
-                                                   nn.LogSoftmax(dim=1))
-        else:
-            raise NotImplementedError()
+        domain_classifier = nn.Sequential(nn.Linear(args.fc_output_dim, 100, bias=False),
+                                                nn.BatchNorm1d(100),
+                                                nn.ReLU(True),
+                                                nn.Linear(100, 2),
+                                                nn.LogSoftmax(dim=1))
         return domain_classifier
 
 
-    def forward(self, x, is_train=False, alpha=1.0):
+    def forward(self, x, is_train=False, alpha=None):
         x = self.backbone(x)
         if self.self_att:
             x = self.non_local(x)
         if self.arch_name.startswith("vit"):
             x = x.last_hidden_state[:, 0, :]
             return x
-        if hasattr(self, "conv_layer"):
-            x = self.conv_layer(x)
         x_after = self.aggregation(x)
         if is_train is True:
-            if self.DA == 'none':
+            if not self.DA:
                 return x_after
-            elif self.DA.startswith('DANN_before'):
-                if self.DA == 'DANN_before':
-                    reverse_x = ReverseLayerF.apply(x.view(x.shape[0], -1), alpha)
-                elif self.DA == 'DANN_before_conv':
-                    reverse_x = ReverseLayerF.apply(x, alpha)
-            elif self.DA == 'DANN_after':
+            else:
                 reverse_x = ReverseLayerF.apply(x_after, alpha)
-            return x_after, reverse_x
+                return x_after, reverse_x
         return x_after
 
 
@@ -232,11 +199,6 @@ def get_backbone(args):
                 logging.debug(f"Train only conv4_x and conv5_x of the {args.backbone.split('conv')[0]}")
             layers = list(backbone.children())[:-2]
 
-        if args.remove_relu is True and (args.backbone.startswith("resnet50") or args.backbone.startswith("resnet101")):
-            last_layer = layers[-1][-1]
-            last_layer = nn.Sequential(*list(last_layer.modules())[1:-1])
-            layers[-1][-1] = last_layer
-
     elif args.backbone == "vgg16":
         if args.pretrain in ['places', 'gldv2']:
             backbone = get_pretrained_model(args)
@@ -306,20 +268,6 @@ def get_output_channels_dim(model):
     """Return the number of channels in the output of a model."""
     return model(torch.ones([1, 3, 224, 224])).shape[1]
 
-
-class GenerativeNet(nn.Module):
-    def __init__(self, args, input_channel_num, output_channel_num):
-        super().__init__()
-        self.model_name = args.G_net
-        if args.G_net == 'unet':
-            self.model = UnetGenerator(input_channel_num, output_channel_num, 8, norm=args.GAN_norm, upsample=args.GAN_upsample)
-        else:
-            raise NotImplementedError()
-    
-    def forward(self, x):
-        x = self.model(x)
-        return x
-    
 
 class pix2pix():
     def __init__(self, args, input_channel_num, output_channel_num, for_training=False):

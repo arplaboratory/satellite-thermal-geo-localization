@@ -15,14 +15,11 @@ def get_scheduler(optimizer, args):
     For other schedulers (step, plateau, and cosine), we use the default PyTorch schedulers.
     See https://pytorch.org/docs/stable/optim.html for more details.
     """
-    if args.GAN_lr_policy == 'linear':
-        def lambda_rule(epoch):
-            # Make sure lr_l is larger than 0
-            lr_l = max(1.0 - max(0, epoch - (args.epochs_num - args.GAN_epochs_decay)) / float(args.GAN_epochs_decay + 1), 0)
-            return lr_l
-        scheduler = lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda_rule)
-    else:
-        raise NotImplementedError()
+    def lambda_rule(epoch):
+        # Make sure lr_l is larger than 0
+        lr_l = max(1.0 - max(0, epoch - (args.epochs_num - args.GAN_epochs_decay)) / float(args.GAN_epochs_decay + 1), 0)
+        return lr_l
+    scheduler = lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda_rule)
     return scheduler
     
 class GANLoss(nn.Module):
