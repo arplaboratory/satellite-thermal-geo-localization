@@ -18,6 +18,24 @@ Related works:
   doi={10.1109/IROS55552.2023.10342068}}
 ```
 
+## Conda Environment Setup
+Our repository requires a conda environment. Relevant packages are listed in ``env.yml``. Run the following command to setup the conda environment.
+```
+conda env create -f env.yml
+```
+
+## Simple Inference Demo
+
+We provide demo scripts that automatically download pretrained models from Hugging Face and run inference on the example images in ``examples/``.
+
+Please check the [demo](https://github.com/arplaboratory/satellite-thermal-geo-localization/tree/demo) branch, which aligns the codebase with [STHN/global_pipeline](https://github.com/arplaboratory/STHN/tree/main/global_pipeline) for pretrained model compatibility.
+
+```bash
+git checkout demo
+python TGM_demo.py  # Satellite -> Thermal generation (xjh19972/TGM)
+python SGM_demo.py  # Thermal -> Satellite retrieval (xjh19972/SGM)
+```
+
 ## Dataset
 Dataset link: [Download](https://huggingface.co/datasets/xjh19972/boson-nighttime/tree/main/satellite-thermal-dataset-v1)
 
@@ -44,12 +62,6 @@ f075a7a6db5d5d61be88d252f7d6e05b  train_database.h5
 b44ee39173bf356b24690ed6933a6792  train_queries.h5
 31923c28dd074ddaacf0c463681f7d2b  val_database.h5
 fdcb2e12d9a29b8d20a4cbd88bfe430c  val_queries.h5
-```
-
-## Conda Environment Setup
-Our repository requires a conda environment. Relevant packages are listed in ``env.yml``. Run the following command to setup the conda environment.
-```
-conda env create -f env.yml
 ```
 
 ## Training
