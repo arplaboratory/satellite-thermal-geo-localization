@@ -61,7 +61,7 @@ def download_sgm_model():
         return local_path
     logging.info("Downloading SGM model from HuggingFace...")
     from huggingface_hub import hf_hub_download
-    path = hf_hub_download(repo_id="xjh19972/SGM", filename="best_model.pth")
+    path = hf_hub_download(repo_id="xjh19972/SGM", filename="model.safetensors")
     logging.info(f"Downloaded to: {path}")
     return path
 
@@ -70,8 +70,12 @@ def load_sgm_model(model_path):
     from model import network
     args = make_sgm_args()
     model = network.GeoLocalizationNet(args)
-    checkpoint = torch.load(model_path, map_location=args.device, weights_only=False)
-    state_dict = checkpoint.get("model_state_dict", checkpoint)
+    if model_path.endswith(".safetensors"):
+        from safetensors.torch import load_file
+        state_dict = load_file(model_path, device=args.device)
+    else:
+        checkpoint = torch.load(model_path, map_location=args.device, weights_only=False)
+        state_dict = checkpoint.get("model_state_dict", checkpoint)
     if list(state_dict.keys())[0].startswith("module"):
         state_dict = OrderedDict(
             {k.replace("module.", ""): v for (k, v) in state_dict.items()}
