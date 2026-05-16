@@ -62,7 +62,7 @@ def crop_patches(map_np, crop_size=512, stride=35, max_patches=20, region=None):
 def load_tgm_model(model_path):
     """Load TGM following STHN/global_pipeline pipeline:
     1. Create pix2pix model
-    2. Load weights via resume_model_pix2pix (strips module. prefix)
+    2. Load netG weights (strips module. prefix if present)
     3. Call setup() to wrap in DataParallel
     4. Set netG to eval mode
     """
@@ -70,9 +70,12 @@ def load_tgm_model(model_path):
     from model.sync_batchnorm import convert_model
     args = make_tgm_args()
     model = network.pix2pix(args, 3, 1)
-    # Load weights (same as util.resume_model_pix2pix)
-    checkpoint = torch.load(model_path, map_location=args.device, weights_only=False)
-    state_dict_G = checkpoint["model_netG_state_dict"]
+    if model_path.endswith(".safetensors"):
+        from safetensors.torch import load_file
+        state_dict_G = load_file(model_path, device=args.device)
+    else:
+        checkpoint = torch.load(model_path, map_location=args.device, weights_only=False)
+        state_dict_G = checkpoint["model_netG_state_dict"]
     if list(state_dict_G.keys())[0].startswith("module"):
         state_dict_G = OrderedDict(
             {k.replace("module.", ""): v for (k, v) in state_dict_G.items()}
@@ -93,7 +96,7 @@ if __name__ == "__main__":
     if not os.path.exists(tgm_model_path):
         logging.info("Downloading TGM model from HuggingFace...")
         from huggingface_hub import hf_hub_download
-        tgm_model_path = hf_hub_download(repo_id="xjh19972/TGM", filename="best_model.pth")
+        tgm_model_path = hf_hub_download(repo_id="xjh19972/TGM", filename="model.safetensors")
         logging.info(f"Downloaded to: {tgm_model_path}")
     else:
         logging.info(f"Using local checkpoint: {tgm_model_path}")
